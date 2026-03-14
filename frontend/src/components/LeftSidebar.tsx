@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bot, Network, Wrench, Server, FileText, Globe, Image as ImageIcon, Edit3, Layers, Users, Repeat } from 'lucide-react';
+import { Bot, Network, Server, FileText, Globe, Image as ImageIcon, Edit3, Layers, Users, Repeat } from 'lucide-react';
 
 const categories = [
   {
@@ -72,7 +72,7 @@ export default function LeftSidebar() {
         {activeCategory?.items.map((item) => {
           const Icon = item.icon;
           return (
-            <div key={item.id} draggable onDragStart={(e) => onDragStart(e, item.type, item)} className="flex items-start gap-3 p-3 bg-white border border-gray-200 rounded-lg cursor-grab hover:border-blue-400 hover:shadow-sm transition-all">
+            <div key={item.id} draggable onDragStart={(e) => onDragStart(e, item.type, item)} className="flex items-start gap-3 p-3 bg-white border-2 border-slate-200 rounded-xl cursor-grab hover:border-blue-500 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 shadow-sm">
               <div className={`mt-0.5 ${item.type === 'agent' ? 'text-green-600' : item.type === 'groupchat' ? 'text-purple-600' : item.type === 'tool' ? 'text-orange-500' : 'text-slate-600'}`}>
                 <Icon size={18} />
               </div>
