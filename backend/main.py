@@ -11,7 +11,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import httpx
 
-from autogen import ConversableAgent, UserProxyAgent
+from autogen import ConversableAgent, UserProxyAgent, GroupChat, GroupChatManager
+
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), 'mcp_servers'))
+from math_server import tool_math_calculate
+from time_server import tool_get_time
+from system_server import tool_get_system_info
+from weather_server import tool_get_weather
+from file_server import tool_list_files
+
 from playwright.sync_api import sync_playwright
 
 app = FastAPI(title="AG2 Whiteboard Pipeline Builder")
@@ -233,6 +242,63 @@ def run_ag2_pipeline_task(task_id: str, blueprint_data: dict):
         chat_result = None
         agent = None 
         
+        def run_agent_node(next_node, current_payload, nodes, edges, task_id):
+            node_name = next_node["data"].get("name", next_node["type"])
+            provider = next_node["data"].get("provider", "ollama")
+            model_name = next_node["data"].get("model", "")
+
+            try:
+                llm_config = get_llm_config(provider, model_name)
+                system_msg = f"{next_node['data'].get('description', 'Assistant')}\n\nWICHTIG: Wenn du die gestellte Aufgabe vollständig erfüllt hast, beende deine finale Antwort ZWINGEND mit dem exakten Wort TERMINATE."
+
+                agent = ConversableAgent(name=node_name.replace(" ", "_"), system_message=system_msg, llm_config=llm_config, human_input_mode="NEVER")
+                user_proxy = UserProxyAgent(name="System_Proxy", human_input_mode="NEVER", max_consecutive_auto_reply=2, is_termination_msg=lambda x: x.get("content", "") and "TERMINATE" in x.get("content", ""), code_execution_config={"use_docker": False})
+
+                for e in edges:
+                    target_id = e["target"] if e["source"] == next_node["id"] else e["source"] if e["target"] == next_node["id"] else None
+                    if target_id and nodes[target_id]["type"] == "tool":
+                        tool_id = nodes[target_id]["data"].get("id")
+                        if tool_id == "browser-tool":
+                            agent.register_for_llm(name="tool_browser_search", description="Liest URLs oder sucht im Web")(tool_browser_search)
+                            user_proxy.register_for_execution(name="tool_browser_search")(tool_browser_search)
+                        elif tool_id == "pdf-tool":
+                            agent.register_for_llm(name="tool_pdf_analysis", description="Liest Text aus PDF Dateien")(tool_pdf_analysis)
+                            user_proxy.register_for_execution(name="tool_pdf_analysis")(tool_pdf_analysis)
+                        elif tool_id == "image-generation":
+                            agent.register_for_llm(name="tool_image_generation", description="Erstellt ein komplett neues Bild aus einem englischen Text-Prompt via Nano Banana 2")(tool_image_generation)
+                            user_proxy.register_for_execution(name="tool_image_generation")(tool_image_generation)
+                        elif tool_id == "image-edit":
+                            agent.register_for_llm(name="tool_image_edit", description="Bearbeitet ein bestehendes Quellbild anhand einer Text-Anweisung via Nano Banana 2")(tool_image_edit)
+                            user_proxy.register_for_execution(name="tool_image_edit")(tool_image_edit)
+                        elif tool_id == "style-transfer":
+                            agent.register_for_llm(name="tool_style_transfer", description="Überträgt den Stil eines Vorlagen-Bildes auf ein Hauptbild via Nano Banana 2")(tool_style_transfer)
+                            user_proxy.register_for_execution(name="tool_style_transfer")(tool_style_transfer)
+                    elif target_id and nodes[target_id]["type"] == "mcp":
+                        # Register all MCP tools to the agent
+                        agent.register_for_llm(name="tool_math_calculate", description="Calculates math expressions")(tool_math_calculate)
+                        user_proxy.register_for_execution(name="tool_math_calculate")(tool_math_calculate)
+
+                        agent.register_for_llm(name="tool_get_time", description="Returns current date and time")(tool_get_time)
+                        user_proxy.register_for_execution(name="tool_get_time")(tool_get_time)
+
+                        agent.register_for_llm(name="tool_get_system_info", description="Returns system OS and Python version")(tool_get_system_info)
+                        user_proxy.register_for_execution(name="tool_get_system_info")(tool_get_system_info)
+
+                        agent.register_for_llm(name="tool_get_weather", description="Returns the weather for a given city")(tool_get_weather)
+                        user_proxy.register_for_execution(name="tool_get_weather")(tool_get_weather)
+
+                        agent.register_for_llm(name="tool_list_files", description="Lists files in a given directory")(tool_list_files)
+                        user_proxy.register_for_execution(name="tool_list_files")(tool_list_files)
+
+                pipeline_tasks[task_id]["logs"].append(f"[{node_name}] Chat startet...")
+                chat_result = user_proxy.initiate_chat(agent, message=current_payload, summary_method="last_msg")
+
+                final_text = chat_result.summary if chat_result.summary else ""
+                return final_text.replace("TERMINATE", "").strip(), chat_result
+            except Exception as e:
+                pipeline_tasks[task_id]["logs"].append(f"[{node_name}] ❌ Fehler: {str(e)}")
+                raise e
+
         while current_node_id:
             outgoing_edges = [e for e in edges if e["source"] == current_node_id]
             if not outgoing_edges:
@@ -245,53 +311,99 @@ def run_ag2_pipeline_task(task_id: str, blueprint_data: dict):
             node_name = next_node["data"].get("name", next_node["type"])
             node_type = next_node["type"]
             
-            if node_type == "agent":
+            if node_type == "node" and next_node["data"].get("id") == "end":
+                pipeline_tasks[task_id]["logs"].append("[System] End node reached.")
+                current_node_id = None
+                break
+
+            elif node_type == "agent":
+                current_payload, chat_result = run_agent_node(next_node, current_payload, nodes, edges, task_id)
+                pipeline_tasks[task_id]["logs"].append(f"[{node_name}] Antwort erhalten.")
+                current_node_id = next_node_id
+
+            elif node_type == "groupchat":
                 provider = next_node["data"].get("provider", "ollama")
                 model_name = next_node["data"].get("model", "")
+                llm_config = get_llm_config(provider, model_name)
+
+                gc_agents = []
+                for e in edges:
+                    if e["source"] == next_node_id:
+                        connected_node = nodes[e["target"]]
+                        if connected_node["type"] == "agent":
+                            a_name = connected_node["data"].get("name", "Agent").replace(" ", "_")
+                            a_sys = connected_node["data"].get("description", "Assistant")
+                            a_sys += "\n\nWICHTIG: Du darfst AUSSCHLIESSLICH in validem JSON antworten. Bende deine Antwort mit TERMINATE."
+                            gc_agents.append(ConversableAgent(name=a_name, system_message=a_sys, llm_config=llm_config, human_input_mode="NEVER"))
+
+                if gc_agents:
+                    try:
+                        groupchat = GroupChat(agents=gc_agents, messages=[], max_round=10)
+                        manager = GroupChatManager(groupchat=groupchat, llm_config=llm_config)
+                        user_proxy = UserProxyAgent(name="System_Proxy", human_input_mode="NEVER", max_consecutive_auto_reply=2, is_termination_msg=lambda x: x.get("content", "") and "TERMINATE" in x.get("content", ""), code_execution_config={"use_docker": False})
+
+                        pipeline_tasks[task_id]["logs"].append(f"[{node_name}] GroupChat startet mit {len(gc_agents)} Agenten...")
+                        chat_result = user_proxy.initiate_chat(manager, message=current_payload, summary_method="last_msg")
+
+                        final_text = chat_result.summary if chat_result.summary else ""
+                        current_payload = final_text.replace("TERMINATE", "").strip()
+                        pipeline_tasks[task_id]["logs"].append(f"[{node_name}] GroupChat Antwort erhalten.")
+                    except Exception as e:
+                        pipeline_tasks[task_id]["logs"].append(f"[{node_name}] ❌ Fehler: {str(e)}")
+                        raise e
+                else:
+                    pipeline_tasks[task_id]["logs"].append(f"[{node_name}] Warnung: Keine Agenten mit GroupChat verbunden.")
                 
+                current_node_id = next_node_id
+
+            elif node_type == "iterator":
                 try:
-                    llm_config = get_llm_config(provider, model_name)
-                    system_msg = f"{next_node['data'].get('description', 'Assistant')}\n\nWICHTIG: Wenn du die gestellte Aufgabe vollständig erfüllt hast, beende deine finale Antwort ZWINGEND mit dem exakten Wort TERMINATE."
-
-                    agent = ConversableAgent(name=node_name.replace(" ", "_"), system_message=system_msg, llm_config=llm_config, human_input_mode="NEVER")
-                    user_proxy = UserProxyAgent(name="System_Proxy", human_input_mode="NEVER", max_consecutive_auto_reply=2, is_termination_msg=lambda x: x.get("content", "") and "TERMINATE" in x.get("content", ""), code_execution_config={"use_docker": False})
-
-                    # Tools anhängen
-                    for e in edges:
-                        target_id = e["target"] if e["source"] == next_node_id else e["source"] if e["target"] == next_node_id else None
-                        if target_id and nodes[target_id]["type"] == "tool":
-                            tool_id = nodes[target_id]["data"].get("id")
-                            if tool_id == "browser-tool":
-                                agent.register_for_llm(name="tool_browser_search", description="Liest URLs oder sucht im Web")(tool_browser_search)
-                                user_proxy.register_for_execution(name="tool_browser_search")(tool_browser_search)
-                            elif tool_id == "pdf-tool":
-                                agent.register_for_llm(name="tool_pdf_analysis", description="Liest Text aus PDF Dateien")(tool_pdf_analysis)
-                                user_proxy.register_for_execution(name="tool_pdf_analysis")(tool_pdf_analysis)
-                            elif tool_id == "image-generation":
-                                agent.register_for_llm(name="tool_image_generation", description="Erstellt ein komplett neues Bild aus einem englischen Text-Prompt via Nano Banana 2")(tool_image_generation)
-                                user_proxy.register_for_execution(name="tool_image_generation")(tool_image_generation)
-                            elif tool_id == "image-edit":
-                                agent.register_for_llm(name="tool_image_edit", description="Bearbeitet ein bestehendes Quellbild anhand einer Text-Anweisung via Nano Banana 2")(tool_image_edit)
-                                user_proxy.register_for_execution(name="tool_image_edit")(tool_image_edit)
-                            elif tool_id == "style-transfer":
-                                agent.register_for_llm(name="tool_style_transfer", description="Überträgt den Stil eines Vorlagen-Bildes auf ein Hauptbild via Nano Banana 2")(tool_style_transfer)
-                                user_proxy.register_for_execution(name="tool_style_transfer")(tool_style_transfer)
-
-                    pipeline_tasks[task_id]["logs"].append(f"[{node_name}] Chat startet...")
-                    chat_result = user_proxy.initiate_chat(agent, message=current_payload, summary_method="last_msg")
+                    import json
+                    parsed_payload = json.loads(current_payload)
+                    array_key = next_node["data"].get("arrayKey")
                     
-                    final_text = chat_result.summary if chat_result.summary else ""
-                    current_payload = final_text.replace("TERMINATE", "").strip()
-                    pipeline_tasks[task_id]["logs"].append(f"[{node_name}] Antwort erhalten.")
+                    if array_key and isinstance(parsed_payload, dict) and array_key in parsed_payload:
+                        items_to_iterate = parsed_payload[array_key]
+                    elif isinstance(parsed_payload, list):
+                        items_to_iterate = parsed_payload
+                    else:
+                        items_to_iterate = [current_payload]
+
+                    pipeline_tasks[task_id]["logs"].append(f"[{node_name}] Iteriere über {len(items_to_iterate)} Elemente...")
+
+                    loop_edge = next((e for e in edges if e["source"] == next_node_id and e.get("sourceHandle") == "loop"), None)
+                    next_edge_after_loop = next((e for e in edges if e["source"] == next_node_id and e.get("sourceHandle") == "next"), None)
+
+                    if not loop_edge:
+                        pipeline_tasks[task_id]["logs"].append(f"[{node_name}] Warnung: Kein Loop-Ausgang verbunden.")
+                        current_node_id = next_node_id
+                    else:
+                        loop_target_node = nodes[loop_edge["target"]]
+                        results = []
+                        for i, item in enumerate(items_to_iterate):
+                            item_str = json.dumps(item) if not isinstance(item, str) else item
+                            pipeline_tasks[task_id]["logs"].append(f"[{node_name}] Verarbeite Element {i+1}/{len(items_to_iterate)}...")
+
+                            if loop_target_node["type"] == "agent":
+                                item_res, chat_result = run_agent_node(loop_target_node, item_str, nodes, edges, task_id)
+                                results.append(item_res)
+                            else:
+                                results.append(item_str)
+
+                        current_payload = json.dumps(results)
+
+                        if next_edge_after_loop:
+                            current_node_id = next_edge_after_loop["target"]
+                        else:
+                            current_node_id = None
 
                 except Exception as e:
-                    pipeline_tasks[task_id]["logs"].append(f"[{node_name}] ❌ Fehler: {str(e)}")
+                    pipeline_tasks[task_id]["logs"].append(f"[{node_name}] ❌ Iterator Fehler: {str(e)}")
                     raise e
             
             elif node_type == "tool":
                 pipeline_tasks[task_id]["logs"].append(f"[System] Überspringe Tool-Node in Hauptschleife.")
-                
-            current_node_id = next_node_id
+                current_node_id = next_node_id
 
         # Token Counting
         tokens_used = 0
