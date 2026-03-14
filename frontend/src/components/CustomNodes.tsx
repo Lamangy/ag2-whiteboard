@@ -19,11 +19,10 @@ export function AgentNode({ data, selected }: any) {
   return (
     <div className={`node-base bg-white shadow-md rounded-xl p-4 hover:shadow-xl transition-shadow border-2 ${isGroup ? 'border-purple-400' : 'border-green-400'} ${selected ? (isGroup ? 'ring-2 ring-purple-500' : 'ring-2 ring-green-500') : ''}`}>
       <Handle type="target" position={Position.Left} className={`w-3 h-3 ${isGroup ? 'bg-purple-500' : 'bg-green-500'}`} />
-      <div className={`flex items-center gap-2 mb-2 ${isGroup ? 'text-purple-700' : 'text-green-700'}`}>
+      <div className={`flex items-center gap-2 ${isGroup ? 'text-purple-700' : 'text-green-700'}`}>
         <Bot size={16} />
-        <span className="font-bold text-sm">{data.label}</span>
+        <span className="font-bold text-sm truncate">{data.label}</span>
       </div>
-      <div className="text-xs text-slate-500 line-clamp-2">{data.description}</div>
       <Handle type="source" position={Position.Right} className={`w-3 h-3 ${isGroup ? 'bg-purple-500' : 'bg-green-500'}`} />
     </div>
   );

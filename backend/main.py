@@ -10,6 +10,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import httpx
+import logging
 
 from autogen import ConversableAgent, UserProxyAgent, GroupChat, GroupChatManager
 
@@ -22,6 +23,13 @@ from weather_server import tool_get_weather
 from file_server import tool_list_files
 
 from playwright.sync_api import sync_playwright
+
+# Filter out /pipeline/status polling logs
+class EndpointFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.args and len(record.args) >= 3 and record.args[2].startswith("/pipeline/status") == False
+
+logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
 
 app = FastAPI(title="AG2 Whiteboard Pipeline Builder")
 
@@ -127,8 +135,8 @@ def tool_pdf_analysis(file_path: Annotated[str, "Der Dateiname oder Pfad der PDF
 
 # --- NANO BANANA 2 TOOLS (Google GenAI SDK) ---
 
-def tool_image_generation(prompt: Annotated[str, "Englische Beschreibung für das Bild"]) -> str:
-    print(f"\n[Nano Banana 2] Generiere Bild: '{prompt}'\n")
+def tool_image_generation(prompt: Annotated[str, "Englische Beschreibung für das Bild"], save_path: Annotated[str, "Optionaler Speicherpfad für das Bild (Ordner oder Dateiname)"] = "") -> str:
+    print(f"\n[Nano Banana 2] Generiere Bild: '{prompt}' (Ziel: '{save_path}')\n")
     api_key = get_gemini_key()
     if not api_key: return "Fehler: Gemini API-Key fehlt."
     
@@ -141,13 +149,23 @@ def tool_image_generation(prompt: Annotated[str, "Englische Beschreibung für da
             contents=[prompt]
         )
         
-        filepath = os.path.join(IMAGE_DIR, f"gen_{uuid.uuid4().hex[:8]}.png")
+        if save_path:
+            if os.path.isdir(save_path) or save_path.endswith("/") or save_path.endswith("\\"):
+                os.makedirs(save_path, exist_ok=True)
+                filepath = os.path.join(save_path, f"gen_{uuid.uuid4().hex[:8]}.png")
+            else:
+                os.makedirs(os.path.dirname(save_path) if os.path.dirname(save_path) else ".", exist_ok=True)
+                filepath = save_path
+        else:
+            filepath = os.path.join(IMAGE_DIR, f"gen_{uuid.uuid4().hex[:8]}.png")
+
+        filepath = os.path.abspath(filepath)
         
         for part in response.parts:
             if getattr(part, 'inline_data', None) is not None:
                 image = part.as_image()
                 image.save(filepath)
-                return f"Erfolg! Bild generiert und gespeichert unter: {os.path.abspath(filepath)}"
+                return f"Erfolg! Bild generiert und gespeichert unter: {filepath}"
                 
         return "Fehler: Die API hat kein Bild in der Antwort zurückgegeben."
     except ImportError:
@@ -155,7 +173,7 @@ def tool_image_generation(prompt: Annotated[str, "Englische Beschreibung für da
     except Exception as e:
         return f"Nano Banana 2 API Fehler: {str(e)}"
 
-def tool_image_edit(prompt: Annotated[str, "Was soll am Bild geändert werden?"], image_filename: Annotated[str, "Dateiname des Quellbildes"]) -> str:
+def tool_image_edit(prompt: Annotated[str, "Was soll am Bild geändert werden?"], image_filename: Annotated[str, "Dateiname des Quellbildes"], save_path: Annotated[str, "Optionaler Speicherpfad für das fertige Bild"] = "") -> str:
     print(f"\n[Nano Banana 2] Editiere Bild '{image_filename}' mit: '{prompt}'\n")
     api_key = get_gemini_key()
     if not api_key: return "Fehler: Gemini API-Key fehlt."
@@ -175,18 +193,29 @@ def tool_image_edit(prompt: Annotated[str, "Was soll am Bild geändert werden?"]
             contents=[source_image, prompt]
         )
         
-        filepath = os.path.join(IMAGE_DIR, f"edit_{uuid.uuid4().hex[:8]}.png")
+        if save_path:
+            if os.path.isdir(save_path) or save_path.endswith("/") or save_path.endswith("\\"):
+                os.makedirs(save_path, exist_ok=True)
+                filepath = os.path.join(save_path, f"edit_{uuid.uuid4().hex[:8]}.png")
+            else:
+                os.makedirs(os.path.dirname(save_path) if os.path.dirname(save_path) else ".", exist_ok=True)
+                filepath = save_path
+        else:
+            filepath = os.path.join(IMAGE_DIR, f"edit_{uuid.uuid4().hex[:8]}.png")
+
+        filepath = os.path.abspath(filepath)
+
         for part in response.parts:
             if getattr(part, 'inline_data', None) is not None:
                 image = part.as_image()
                 image.save(filepath)
-                return f"Erfolg! Bearbeitetes Bild gespeichert unter: {os.path.abspath(filepath)}"
+                return f"Erfolg! Bearbeitetes Bild gespeichert unter: {filepath}"
                 
         return "Fehler: Die API hat kein bearbeitetes Bild zurückgegeben."
     except Exception as e:
         return f"Nano Banana 2 Edit Fehler: {str(e)}"
 
-def tool_style_transfer(prompt: Annotated[str, "Anweisung zur Kombination"], content_image: Annotated[str, "Hauptbild"], style_image: Annotated[str, "Stil-Vorlagen Bild"]) -> str:
+def tool_style_transfer(prompt: Annotated[str, "Anweisung zur Kombination"], content_image: Annotated[str, "Hauptbild"], style_image: Annotated[str, "Stil-Vorlagen Bild"], save_path: Annotated[str, "Optionaler Speicherpfad für das fertige Bild"] = "") -> str:
     print(f"\n[Nano Banana 2] Style Transfer... \n")
     api_key = get_gemini_key()
     if not api_key: return "Fehler: Gemini API-Key fehlt."
@@ -207,12 +236,23 @@ def tool_style_transfer(prompt: Annotated[str, "Anweisung zur Kombination"], con
             contents=[img_content, img_style, prompt]
         )
         
-        filepath = os.path.join(IMAGE_DIR, f"style_{uuid.uuid4().hex[:8]}.png")
+        if save_path:
+            if os.path.isdir(save_path) or save_path.endswith("/") or save_path.endswith("\\"):
+                os.makedirs(save_path, exist_ok=True)
+                filepath = os.path.join(save_path, f"style_{uuid.uuid4().hex[:8]}.png")
+            else:
+                os.makedirs(os.path.dirname(save_path) if os.path.dirname(save_path) else ".", exist_ok=True)
+                filepath = save_path
+        else:
+            filepath = os.path.join(IMAGE_DIR, f"style_{uuid.uuid4().hex[:8]}.png")
+
+        filepath = os.path.abspath(filepath)
+
         for part in response.parts:
             if getattr(part, 'inline_data', None) is not None:
                 image = part.as_image()
                 image.save(filepath)
-                return f"Erfolg! Style-Transfer Bild gespeichert unter: {os.path.abspath(filepath)}"
+                return f"Erfolg! Style-Transfer Bild gespeichert unter: {filepath}"
                 
         return "Fehler: Die API hat kein Style-Transfer Bild zurückgegeben."
     except Exception as e:
