@@ -1,0 +1,24 @@
+C:\viben\white\
+│
+├── backend/
+│   ├── main.py                 # Der FastAPI Server & Smart Router (AG2 Logik)
+│   ├── data/                   # Automatisch generierter Ordner für persistente Daten
+│   │   ├── settings.json       # Speichert Ollama-IP und Gemini-API-Key
+│   │   ├── blueprints/         # Hier landen die gespeicherten Whiteboard-Flows (.json)
+│   │   └── images/             # Hier speichert Nano Banana 2 die generierten Bilder (.png)
+│   └── start.bat               # (Optional) Script zum Starten von Uvicorn
+│
+└── frontend/
+    ├── package.json
+    ├── vite.config.ts
+    ├── index.html
+    └── src/
+        ├── App.tsx             # Main React Component, ReactFlow Logic & UI Overlay
+        ├── index.css           # Tailwind & Global Styles
+        ├── main.tsx
+        └── components/
+            ├── LeftSidebar.tsx # Drag&Drop Menü für Agenten, GroupChat, Tools
+            ├── RightSidebar.tsx# Node-Konfiguration (Rollen-Presets, Strict Mode)
+            ├── CustomNodes.tsx # Optische Definition der Whiteboard-Bausteine
+            ├── SettingsModal.tsx # API-Key und IP-Einstellungen
+            └── CodeGenModal.tsx  # (Optional) Export von Pipeline-Code

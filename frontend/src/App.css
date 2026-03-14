@@ -1,0 +1,192 @@
+import { useState, useCallback, useMemo } from 'react';
+import { 
+  ReactFlow, Background, BackgroundVariant, Controls, applyNodeChanges, applyEdgeChanges,
+  addEdge, NodeChange, EdgeChange, Connection, Edge, Node, ReactFlowProvider
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+import { Save, FolderOpen, Trash2, X, Play, AlertTriangle, CheckCircle } from 'lucide-react';
+import axios from 'axios';
+
+import LeftSidebar from './components/LeftSidebar';
+import RightSidebar from './components/RightSidebar';
+import CodeGenModal from './components/CodeGenModal';
+import SettingsModal from './components/SettingsModal';
+import { AgentNode, BaseNode, ToolNode, McpNode } from './components/CustomNodes';
+
+const checkConnectionRules = (sourceNode: Node, targetNode: Node): { valid: boolean; message: string } => {
+  const sType = sourceNode.type;
+  const tType = targetNode.type;
+  if (sourceNode.id === targetNode.id) return { valid: false, message: "Ein Element kann nicht mit sich selbst verbunden werden." };
+  if (sType === 'node' && (tType === 'mcp' || tType === 'tool')) return { valid: false, message: "Ein Node kann nicht direkt mit einem Tool/MCP verbunden werden." };
+  if (sType === 'mcp' && (tType === 'node' || tType === 'mcp')) return { valid: false, message: "MCP-Server können nur von Agenten oder Tools konsumiert werden." };
+  if (sType === 'tool' && (tType === 'mcp' || tType === 'tool')) return { valid: false, message: "Tools geben Resultate an Agenten oder Nodes weiter." };
+  return { valid: true, message: "" };
+};
+
+function PipelineBuilder() {
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
+  const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
+  const [finalResult, setFinalResult] = useState<string | null>(null);
+  const [showResult, setShowResult] = useState(false);
+  
+  const [showCodeGenModal, setShowCodeGenModal] = useState(false);
+  const [nodeForCodeGen, setNodeForCodeGen] = useState<Node | null>(null);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+
+  const selectedNode = nodes.find(n => n.selected) || null;
+
+  const nodeTypes = useMemo(() => ({ agent: AgentNode, node: BaseNode, tool: ToolNode, mcp: McpNode }), []);
+
+  const onNodesChange = useCallback((changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
+  const onEdgesChange = useCallback((changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)), []);
+
+  const isValidConnection = useCallback((connection: Connection) => {
+    const sourceNode = nodes.find((n) => n.id === connection.source);
+    const targetNode = nodes.find((n) => n.id === connection.target);
+    if (!sourceNode || !targetNode) return false;
+    return checkConnectionRules(sourceNode, targetNode).valid;
+  }, [nodes]);
+
+  const onConnect = useCallback((connection: Connection) => {
+    const sourceNode = nodes.find((n) => n.id === connection.source);
+    const targetNode = nodes.find((n) => n.id === connection.target);
+    if (sourceNode && targetNode) {
+      const { valid, message } = checkConnectionRules(sourceNode, targetNode);
+      if (!valid) {
+        setConnectionError(message);
+        setTimeout(() => setConnectionError(null), 4000);
+        return;
+      }
+    }
+    setEdges((eds) => addEdge({ ...connection, animated: true, style: { stroke: '#64748b', strokeWidth: 2 } }, eds));
+  }, [nodes]);
+
+  const onDrop = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    const type = event.dataTransfer.getData('application/reactflow');
+    const dataStr = event.dataTransfer.getData('application/elementData');
+    if (!type || !dataStr) return;
+    const elementData = JSON.parse(dataStr);
+    const position = { x: event.clientX - 300, y: event.clientY - 60 };
+    const newNode = {
+      id: `${elementData.id}-${Date.now()}`, type: type, position,
+      data: { label: elementData.name, provider: 'ollama', prompt: '', ...elementData },
+    };
+    setNodes((nds) => nds.concat(newNode));
+    if (type === 'mcp') { setNodeForCodeGen(newNode); setShowCodeGenModal(true); }
+  }, []);
+
+  const onDragOver = useCallback((event: React.DragEvent) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; }, []);
+
+  const updateNodeData = useCallback((id: string, newData: any) => {
+    setNodes((nds) => nds.map((node) => node.id === id ? { ...node, data: { ...node.data, ...newData } } : node));
+  }, []);
+
+  const handleStartPipeline = async () => {
+    if (nodes.length === 0) return alert("Das Whiteboard ist leer.");
+    setShowLogs(true); setShowResult(false); setTerminalLogs(["[System] Sende Pipeline an Backend..."]);
+
+    try {
+      const blueprint = { id: `blueprint-${Date.now()}`, name: "Live Pipeline", nodes, edges };
+      const response = await axios.post('http://localhost:8000/pipeline/start', blueprint);
+      const taskId = response.data.task_id;
+
+      const interval = setInterval(async () => {
+        try {
+          const statusRes = await axios.get(`http://localhost:8000/pipeline/status/${taskId}`);
+          const taskData = statusRes.data;
+          setTerminalLogs(taskData.logs);
+
+          if (taskData.status === 'completed' || taskData.status === 'failed') {
+            clearInterval(interval);
+            if (taskData.status === 'completed') {
+              setFinalResult(taskData.result.final_output);
+              setShowResult(true);
+            }
+          }
+        } catch (error) {
+          clearInterval(interval);
+          setTerminalLogs(prev => [...prev, "[Fehler] Verbindungsabbruch beim Polling."]);
+        }
+      }, 1000);
+    } catch (error) {
+      setTerminalLogs(prev => [...prev, `[Fehler] Konnte Pipeline nicht starten.`]);
+    }
+  };
+
+  return (
+    <div className="app-container flex flex-col h-screen">
+      <header className="header shrink-0">
+        <div className="flex items-center gap-4">
+          <h1 className="text-xl font-bold text-slate-800">AG2 Pipeline Builder</h1>
+          <button className="p-2 text-slate-600 hover:bg-slate-100 rounded"><Save size={20} /></button>
+          <button className="p-2 text-slate-600 hover:bg-slate-100 rounded"><FolderOpen size={20} /></button>
+          <button className="p-2 text-red-600 hover:bg-red-50 rounded"><Trash2 size={20} /></button>
+        </div>
+        <div className="flex items-center gap-4">
+          <button onClick={() => setShowSettingsModal(true)} className="px-4 py-2 bg-slate-100 border border-slate-300 rounded text-sm font-medium hover:bg-slate-200">Einstellungen</button>
+          <button onClick={handleStartPipeline} className="px-4 py-2 bg-green-600 text-white rounded font-medium text-sm hover:bg-green-700 flex items-center gap-2 shadow-sm"><Play size={16} /> Pipeline starten</button>
+        </div>
+      </header>
+
+      <div className="main-content flex flex-1 overflow-hidden relative">
+        <LeftSidebar />
+
+        <div className="whiteboard-wrapper flex-1 relative" onDrop={onDrop} onDragOver={onDragOver}>
+          {connectionError && (
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded shadow-lg flex items-center gap-3 animate-bounce">
+              <AlertTriangle size={20} /> <span className="font-medium text-sm">{connectionError}</span>
+              <button onClick={() => setConnectionError(null)} className="ml-2 text-red-500 hover:text-red-800"><X size={16}/></button>
+            </div>
+          )}
+
+          <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} isValidConnection={isValidConnection} fitView>
+            <Background variant={BackgroundVariant.Dots} gap={20} size={2} color="#ef4444" />
+            <Controls />
+          </ReactFlow>
+
+          {showLogs && (
+            <div className="floating-window" style={{ bottom: '20px', left: '20px', width: '500px', height: '300px' }}>
+              <div className="floating-window-header">
+                <span>Terminal Live-Logs</span>
+                <button onClick={() => setShowLogs(false)} className="text-gray-500 hover:text-black"><X size={18} /></button>
+              </div>
+              <div className="floating-window-content terminal-logs flex flex-col gap-1">
+                {terminalLogs.map((log, index) => (
+                  <div key={index} className={log.includes('[Fehler]') || log.includes('❌') ? 'text-red-400' : ''}>{log}</div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {showResult && finalResult && (
+            <div className="floating-window" style={{ top: '80px', right: '20px', width: '450px', maxHeight: '600px', display: 'flex', flexDirection: 'column' }}>
+              <div className="floating-window-header bg-green-50 border-b border-green-200">
+                <span className="text-green-800 font-bold flex items-center gap-2"><CheckCircle size={18} /> Finales Pipeline-Ergebnis</span>
+                <button onClick={() => setShowResult(false)} className="text-green-700 hover:text-black transition-colors"><X size={18} /></button>
+              </div>
+              <div className="floating-window-content p-5 bg-white overflow-y-auto whitespace-pre-wrap text-slate-700 leading-relaxed text-sm flex-1">
+                {finalResult}
+              </div>
+            </div>
+          )}
+        </div>
+        <RightSidebar selectedNode={selectedNode} updateNodeData={updateNodeData} />
+      </div>
+
+      {showCodeGenModal && nodeForCodeGen && <CodeGenModal node={nodeForCodeGen} onClose={() => { setShowCodeGenModal(false); setNodeForCodeGen(null); }} />}
+      {showSettingsModal && <SettingsModal onClose={() => setShowSettingsModal(false)} />}
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ReactFlowProvider>
+      <PipelineBuilder />
+    </ReactFlowProvider>
+  );
+}

@@ -1,0 +1,7 @@
+Bash
+npm install @xyflow/react lucide-react axios
+Nachträglich im Chatverlauf installierte Spezial-Abhängigkeit:
+
+Bash
+# Für das schöne, große Ergebnis-Fenster (Überschriften, Listen, Codeblöcke)
+npm install react-markdown

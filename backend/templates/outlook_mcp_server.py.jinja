@@ -1,0 +1,13 @@
+from fastapi import FastAPI, Header
+import httpx
+
+app = FastAPI()
+
+@app.get("/mcp/{{ node_id }}/messages")
+async def get_emails(authorization: str = Header(default="Bearer mock")):
+    # Dies ist der generierte Code für {{ node_id }}
+    return {"status": "success", "message": "E-Mails erfolgreich für {{ node_id }} abgerufen."}
+
+@app.post("/mcp/{{ node_id }}/reply")
+async def send_reply(authorization: str = Header(default="Bearer mock")):
+    return {"status": "success", "message": "Antwort gesendet."}

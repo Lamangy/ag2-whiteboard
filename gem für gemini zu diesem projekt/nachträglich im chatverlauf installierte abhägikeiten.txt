@@ -1,0 +1,8 @@
+# Für das Framework selbst
+pip install autogen-agentchat~=0.2.0
+
+# Für das PDF-Analyse-Tool
+pip install pypdf
+
+# Für die Nano Banana 2 Bildgenerierung (wichtig: das alte google-generativeai wurde entfernt!)
+pip install google-genai pillow

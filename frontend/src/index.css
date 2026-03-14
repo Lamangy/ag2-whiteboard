@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  overflow: hidden;
+}
+
+.app-container { display: flex; flex-direction: column; height: 100vh; }
+.header { height: 60px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background-color: white; z-index: 10; }
+.main-content { display: flex; flex: 1; height: calc(100vh - 60px); }
+.left-sidebar { width: 300px; border-right: 1px solid #e2e8f0; background: white; display: flex; flex-direction: column; }
+.whiteboard-wrapper { flex: 1; position: relative; background-color: #fdfbf7; }
+.right-sidebar { width: 300px; border-left: 1px solid #e2e8f0; background: white; display: flex; flex-direction: column; }
+
+.floating-window { position: absolute; background: white; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: flex; flex-direction: column; z-index: 50; }
+.floating-window-header { padding: 10px 15px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border-top-left-radius: 8px; border-top-right-radius: 8px; font-weight: bold; }
+.floating-window-content { padding: 15px; overflow-y: auto; flex: 1; }
+.terminal-logs { background: #1e293b; color: #38bdf8; font-family: monospace; font-size: 13px; padding: 10px; border-radius: 4px; height: 100%; overflow-y: auto; }
+
+/* React Flow Connection Validation Colors */
+.react-flow__handle-valid { background-color: #22c55e !important; }
+.react-flow__handle-invalid { background-color: #ef4444 !important; }
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }

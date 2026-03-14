@@ -1,0 +1,17 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+
+# Daten & Keys (WICHTIG!)
+backend/data/settings.json
+backend/data/blueprints/*.json
+backend/data/images/*.png
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# System
+.DS_Store
+Thumbs.db
