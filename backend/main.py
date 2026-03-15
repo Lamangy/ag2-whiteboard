@@ -27,7 +27,7 @@ from playwright.sync_api import sync_playwright
 # Filter out /pipeline/status polling logs
 class EndpointFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
-        return record.args and len(record.args) >= 3 and record.args[2].startswith("/pipeline/status") == False
+        return "/pipeline/status" not in record.getMessage()
 
 logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
 
@@ -135,7 +135,7 @@ def tool_pdf_analysis(file_path: Annotated[str, "Der Dateiname oder Pfad der PDF
 
 # --- NANO BANANA 2 TOOLS (Google GenAI SDK) ---
 
-def tool_image_generation(prompt: Annotated[str, "Englische Beschreibung für das Bild"], save_path: Annotated[str, "Optionaler Speicherpfad für das Bild (Ordner oder Dateiname)"] = "") -> str:
+def tool_image_generation(prompt: Annotated[str, "Englische Beschreibung für das Bild"], save_path: str = "") -> str:
     print(f"\n[Nano Banana 2] Generiere Bild: '{prompt}' (Ziel: '{save_path}')\n")
     api_key = get_gemini_key()
     if not api_key: return "Fehler: Gemini API-Key fehlt."
@@ -173,7 +173,7 @@ def tool_image_generation(prompt: Annotated[str, "Englische Beschreibung für da
     except Exception as e:
         return f"Nano Banana 2 API Fehler: {str(e)}"
 
-def tool_image_edit(prompt: Annotated[str, "Was soll am Bild geändert werden?"], image_filename: Annotated[str, "Dateiname des Quellbildes"], save_path: Annotated[str, "Optionaler Speicherpfad für das fertige Bild"] = "") -> str:
+def tool_image_edit(prompt: Annotated[str, "Was soll am Bild geändert werden?"], image_filename: Annotated[str, "Dateiname des Quellbildes"], save_path: str = "") -> str:
     print(f"\n[Nano Banana 2] Editiere Bild '{image_filename}' mit: '{prompt}'\n")
     api_key = get_gemini_key()
     if not api_key: return "Fehler: Gemini API-Key fehlt."
@@ -215,7 +215,7 @@ def tool_image_edit(prompt: Annotated[str, "Was soll am Bild geändert werden?"]
     except Exception as e:
         return f"Nano Banana 2 Edit Fehler: {str(e)}"
 
-def tool_style_transfer(prompt: Annotated[str, "Anweisung zur Kombination"], content_image: Annotated[str, "Hauptbild"], style_image: Annotated[str, "Stil-Vorlagen Bild"], save_path: Annotated[str, "Optionaler Speicherpfad für das fertige Bild"] = "") -> str:
+def tool_style_transfer(prompt: Annotated[str, "Anweisung zur Kombination"], content_image: Annotated[str, "Hauptbild"], style_image: Annotated[str, "Stil-Vorlagen Bild"], save_path: str = "") -> str:
     print(f"\n[Nano Banana 2] Style Transfer... \n")
     api_key = get_gemini_key()
     if not api_key: return "Fehler: Gemini API-Key fehlt."
@@ -393,7 +393,7 @@ def run_ag2_pipeline_task(task_id: str, blueprint_data: dict):
                         raise e
                 else:
                     pipeline_tasks[task_id]["logs"].append(f"[{node_name}] Warnung: Keine Agenten mit GroupChat verbunden.")
-                
+
                 current_node_id = next_node_id
 
             elif node_type == "iterator":
@@ -424,7 +424,7 @@ def run_ag2_pipeline_task(task_id: str, blueprint_data: dict):
                             item_str = json.dumps(item) if not isinstance(item, str) else item
                             pipeline_tasks[task_id]["logs"].append(f"[{node_name}] Verarbeite Element {i+1}/{len(items_to_iterate)}...")
 
-                            if loop_target_node["type"] == "agent":
+                            if loop_target_node["type"] in ["agent", "groupchat"]:
                                 item_res, chat_result = run_agent_node(loop_target_node, item_str, nodes, edges, task_id)
                                 results.append(item_res)
                             else:
@@ -512,6 +512,16 @@ async def list_blueprints():
     for f in os.listdir(BLUEPRINTS_DIR):
         if f.endswith(".json"):
             with open(os.path.join(BLUEPRINTS_DIR, f), "r", encoding="utf-8") as file: bps.append(json.load(file))
+    return bps
+
+@app.get("/preset_blueprints")
+async def list_preset_blueprints():
+    bps = []
+    preset_dir = os.path.join(DATA_DIR, "preset_blueprints")
+    if os.path.exists(preset_dir):
+        for f in os.listdir(preset_dir):
+            if f.endswith(".json"):
+                with open(os.path.join(preset_dir, f), "r", encoding="utf-8") as file: bps.append(json.load(file))
     return bps
 
 @app.post("/pipeline/start")

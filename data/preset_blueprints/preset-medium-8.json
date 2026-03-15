@@ -1,0 +1,95 @@
+{
+    "id": "preset-medium-8",
+    "name": "Mittel: Forschung & Schreiben 8",
+    "nodes": [
+        {
+            "id": "start",
+            "type": "node",
+            "position": {
+                "x": 100,
+                "y": 100
+            },
+            "data": {
+                "id": "start",
+                "name": "Start",
+                "prompt": "Erstelle Konzept 8"
+            }
+        },
+        {
+            "id": "a1",
+            "type": "agent",
+            "position": {
+                "x": 300,
+                "y": 100
+            },
+            "data": {
+                "id": "a1",
+                "name": "Forscher",
+                "description": "Suche Fakten.",
+                "provider": "ollama",
+                "model": "llama3"
+            }
+        },
+        {
+            "id": "m1",
+            "type": "mcp",
+            "position": {
+                "x": 300,
+                "y": -50
+            },
+            "data": {
+                "id": "mcp-file",
+                "name": "Datei Tool"
+            }
+        },
+        {
+            "id": "a2",
+            "type": "agent",
+            "position": {
+                "x": 600,
+                "y": 100
+            },
+            "data": {
+                "id": "a2",
+                "name": "Schreiber",
+                "description": "Schreibe Text.",
+                "provider": "ollama",
+                "model": "llama3"
+            }
+        },
+        {
+            "id": "end",
+            "type": "node",
+            "position": {
+                "x": 900,
+                "y": 100
+            },
+            "data": {
+                "id": "end",
+                "name": "Ende"
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "start",
+            "target": "a1"
+        },
+        {
+            "id": "e2",
+            "source": "a1",
+            "target": "m1"
+        },
+        {
+            "id": "e3",
+            "source": "a1",
+            "target": "a2"
+        },
+        {
+            "id": "e4",
+            "source": "a2",
+            "target": "end"
+        }
+    ]
+}

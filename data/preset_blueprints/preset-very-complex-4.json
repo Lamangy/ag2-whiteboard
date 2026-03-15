@@ -1,0 +1,133 @@
+{
+    "id": "preset-very-complex-4",
+    "name": "Experten: Teamplanung & Batch-Review 4",
+    "nodes": [
+        {
+            "id": "start",
+            "type": "node",
+            "position": {
+                "x": 100,
+                "y": 100
+            },
+            "data": {
+                "id": "start",
+                "name": "Start",
+                "prompt": "Plane 3 Features und evaluiere sie einzeln."
+            }
+        },
+        {
+            "id": "g1",
+            "type": "groupchat",
+            "position": {
+                "x": 300,
+                "y": 100
+            },
+            "data": {
+                "id": "g1",
+                "name": "Team Hub",
+                "description": "Team von Experten."
+            }
+        },
+        {
+            "id": "a1",
+            "type": "agent",
+            "position": {
+                "x": 300,
+                "y": 300
+            },
+            "data": {
+                "id": "a1",
+                "name": "Planer",
+                "description": "Erstelle JSON Liste.",
+                "provider": "ollama",
+                "model": "llama3"
+            }
+        },
+        {
+            "id": "iterator",
+            "type": "iterator",
+            "position": {
+                "x": 500,
+                "y": 100
+            },
+            "data": {
+                "id": "iterator",
+                "name": "Iterator",
+                "arrayKey": ""
+            }
+        },
+        {
+            "id": "a2",
+            "type": "agent",
+            "position": {
+                "x": 700,
+                "y": -50
+            },
+            "data": {
+                "id": "a2",
+                "name": "Kritiker",
+                "description": "Kritisiere das Feature.",
+                "provider": "ollama",
+                "model": "llama3"
+            }
+        },
+        {
+            "id": "m1",
+            "type": "mcp",
+            "position": {
+                "x": 700,
+                "y": -150
+            },
+            "data": {
+                "id": "mcp-time",
+                "name": "Zeit Info"
+            }
+        },
+        {
+            "id": "end",
+            "type": "node",
+            "position": {
+                "x": 900,
+                "y": 100
+            },
+            "data": {
+                "id": "end",
+                "name": "Ende"
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "start",
+            "target": "g1"
+        },
+        {
+            "id": "e2",
+            "source": "g1",
+            "target": "a1"
+        },
+        {
+            "id": "e3",
+            "source": "g1",
+            "target": "iterator"
+        },
+        {
+            "id": "e4",
+            "source": "iterator",
+            "target": "a2",
+            "sourceHandle": "loop"
+        },
+        {
+            "id": "e5",
+            "source": "a2",
+            "target": "m1"
+        },
+        {
+            "id": "e6",
+            "source": "iterator",
+            "target": "end",
+            "sourceHandle": "next"
+        }
+    ]
+}
