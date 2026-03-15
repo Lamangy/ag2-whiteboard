@@ -20,7 +20,10 @@ from math_server import tool_math_calculate
 from time_server import tool_get_time
 from system_server import tool_get_system_info
 from weather_server import tool_get_weather
-from file_server import tool_list_files
+from file_server import tool_list_files, tool_save_file, tool_analyze_folder, tool_rename_file, tool_search_logs, tool_create_backup
+from data_server import tool_excel_csv_analyzer
+from email_server import tool_read_emails, tool_draft_email, tool_send_email
+from blender_server import tool_run_blender_script
 
 from playwright.sync_api import sync_playwright
 
@@ -294,10 +297,13 @@ def run_ag2_pipeline_task(task_id: str, blueprint_data: dict):
                 agent = ConversableAgent(name=node_name.replace(" ", "_"), system_message=system_msg, llm_config=llm_config, human_input_mode="NEVER")
                 user_proxy = UserProxyAgent(name="System_Proxy", human_input_mode="NEVER", max_consecutive_auto_reply=2, is_termination_msg=lambda x: x.get("content", "") and "TERMINATE" in x.get("content", ""), code_execution_config={"use_docker": False})
 
+                from functools import partial
                 for e in edges:
                     target_id = e["target"] if e["source"] == next_node["id"] else e["source"] if e["target"] == next_node["id"] else None
                     if target_id and nodes[target_id]["type"] == "tool":
                         tool_id = nodes[target_id]["data"].get("id")
+                        save_loc = nodes[target_id]["data"].get("savePath", "")
+
                         if tool_id == "browser-tool":
                             agent.register_for_llm(name="tool_browser_search", description="Liest URLs oder sucht im Web")(tool_browser_search)
                             user_proxy.register_for_execution(name="tool_browser_search")(tool_browser_search)
@@ -305,30 +311,87 @@ def run_ag2_pipeline_task(task_id: str, blueprint_data: dict):
                             agent.register_for_llm(name="tool_pdf_analysis", description="Liest Text aus PDF Dateien")(tool_pdf_analysis)
                             user_proxy.register_for_execution(name="tool_pdf_analysis")(tool_pdf_analysis)
                         elif tool_id == "image-generation":
-                            agent.register_for_llm(name="tool_image_generation", description="Erstellt ein komplett neues Bild aus einem englischen Text-Prompt via Nano Banana 2")(tool_image_generation)
-                            user_proxy.register_for_execution(name="tool_image_generation")(tool_image_generation)
+                            def custom_image_gen(prompt: Annotated[str, "Englische Beschreibung für das Bild"]):
+                                return tool_image_generation(prompt, save_path=save_loc)
+                            agent.register_for_llm(name="tool_image_generation", description="Erstellt ein komplett neues Bild aus einem englischen Text-Prompt via Nano Banana 2")(custom_image_gen)
+                            user_proxy.register_for_execution(name="tool_image_generation")(custom_image_gen)
                         elif tool_id == "image-edit":
-                            agent.register_for_llm(name="tool_image_edit", description="Bearbeitet ein bestehendes Quellbild anhand einer Text-Anweisung via Nano Banana 2")(tool_image_edit)
-                            user_proxy.register_for_execution(name="tool_image_edit")(tool_image_edit)
+                            def custom_image_edit(prompt: Annotated[str, "Was soll am Bild geändert werden?"], image_filename: Annotated[str, "Dateiname des Quellbildes"]):
+                                return tool_image_edit(prompt, image_filename, save_path=save_loc)
+                            agent.register_for_llm(name="tool_image_edit", description="Bearbeitet ein bestehendes Quellbild anhand einer Text-Anweisung via Nano Banana 2")(custom_image_edit)
+                            user_proxy.register_for_execution(name="tool_image_edit")(custom_image_edit)
                         elif tool_id == "style-transfer":
-                            agent.register_for_llm(name="tool_style_transfer", description="Überträgt den Stil eines Vorlagen-Bildes auf ein Hauptbild via Nano Banana 2")(tool_style_transfer)
-                            user_proxy.register_for_execution(name="tool_style_transfer")(tool_style_transfer)
+                            def custom_style_transfer(prompt: Annotated[str, "Anweisung zur Kombination"], content_image: Annotated[str, "Hauptbild"], style_image: Annotated[str, "Stil-Vorlagen Bild"]):
+                                return tool_style_transfer(prompt, content_image, style_image, save_path=save_loc)
+                            agent.register_for_llm(name="tool_style_transfer", description="Überträgt den Stil eines Vorlagen-Bildes auf ein Hauptbild via Nano Banana 2")(custom_style_transfer)
+                            user_proxy.register_for_execution(name="tool_style_transfer")(custom_style_transfer)
+
                     elif target_id and nodes[target_id]["type"] == "mcp":
-                        # Register all MCP tools to the agent
-                        agent.register_for_llm(name="tool_math_calculate", description="Calculates math expressions")(tool_math_calculate)
-                        user_proxy.register_for_execution(name="tool_math_calculate")(tool_math_calculate)
+                        mcp_id = nodes[target_id]["data"].get("id")
+                        save_loc = nodes[target_id]["data"].get("savePath", "")
 
-                        agent.register_for_llm(name="tool_get_time", description="Returns current date and time")(tool_get_time)
-                        user_proxy.register_for_execution(name="tool_get_time")(tool_get_time)
+                        if mcp_id == "mcp-math":
+                            agent.register_for_llm(name="tool_math_calculate", description="Calculates math expressions")(tool_math_calculate)
+                            user_proxy.register_for_execution(name="tool_math_calculate")(tool_math_calculate)
+                        elif mcp_id == "mcp-time":
+                            agent.register_for_llm(name="tool_get_time", description="Returns current date and time")(tool_get_time)
+                            user_proxy.register_for_execution(name="tool_get_time")(tool_get_time)
+                        elif mcp_id == "mcp-system":
+                            agent.register_for_llm(name="tool_get_system_info", description="Returns system OS and Python version")(tool_get_system_info)
+                            user_proxy.register_for_execution(name="tool_get_system_info")(tool_get_system_info)
+                        elif mcp_id == "mcp-weather":
+                            agent.register_for_llm(name="tool_get_weather", description="Returns the weather for a given city")(tool_get_weather)
+                            user_proxy.register_for_execution(name="tool_get_weather")(tool_get_weather)
+                        elif mcp_id == "mcp-file":
+                            def custom_tool_save_file(content: str, filename: str):
+                                import os
+                                final_path = os.path.join(save_loc, filename) if save_loc else filename
+                                return tool_save_file(content, final_path)
+                            def custom_tool_list_files(path: str = ""):
+                                target_path = path if path else save_loc if save_loc else "."
+                                return tool_list_files(target_path)
+                            def custom_tool_analyze_folder(path: str = ""):
+                                target_path = path if path else save_loc if save_loc else "."
+                                return tool_analyze_folder(target_path)
 
-                        agent.register_for_llm(name="tool_get_system_info", description="Returns system OS and Python version")(tool_get_system_info)
-                        user_proxy.register_for_execution(name="tool_get_system_info")(tool_get_system_info)
-
-                        agent.register_for_llm(name="tool_get_weather", description="Returns the weather for a given city")(tool_get_weather)
-                        user_proxy.register_for_execution(name="tool_get_weather")(tool_get_weather)
-
-                        agent.register_for_llm(name="tool_list_files", description="Lists files in a given directory")(tool_list_files)
-                        user_proxy.register_for_execution(name="tool_list_files")(tool_list_files)
+                            agent.register_for_llm(name="tool_list_files", description="Lists files in a given directory.")(custom_tool_list_files)
+                            user_proxy.register_for_execution(name="tool_list_files")(custom_tool_list_files)
+                            agent.register_for_llm(name="tool_save_file", description="Saves text content to a file.")(custom_tool_save_file)
+                            user_proxy.register_for_execution(name="tool_save_file")(custom_tool_save_file)
+                            agent.register_for_llm(name="tool_analyze_folder", description="Analyzes a folder structure.")(custom_tool_analyze_folder)
+                            user_proxy.register_for_execution(name="tool_analyze_folder")(custom_tool_analyze_folder)
+                            agent.register_for_llm(name="tool_rename_file", description="Renames or moves a file.")(tool_rename_file)
+                            user_proxy.register_for_execution(name="tool_rename_file")(tool_rename_file)
+                            agent.register_for_llm(name="tool_search_logs", description="Searches for a keyword in files.")(tool_search_logs)
+                            user_proxy.register_for_execution(name="tool_search_logs")(tool_search_logs)
+                            agent.register_for_llm(name="tool_create_backup", description="Creates a zip backup.")(tool_create_backup)
+                            user_proxy.register_for_execution(name="tool_create_backup")(tool_create_backup)
+                        elif mcp_id == "mcp-data":
+                            agent.register_for_llm(name="tool_excel_csv_analyzer", description="Analyzes an Excel or CSV file using pandas.")(tool_excel_csv_analyzer)
+                            user_proxy.register_for_execution(name="tool_excel_csv_analyzer")(tool_excel_csv_analyzer)
+                        elif mcp_id == "mcp-email":
+                            agent.register_for_llm(name="tool_read_emails", description="Reads unread emails.")(tool_read_emails)
+                            user_proxy.register_for_execution(name="tool_read_emails")(tool_read_emails)
+                            agent.register_for_llm(name="tool_draft_email", description="Drafts an email reply.")(tool_draft_email)
+                            user_proxy.register_for_execution(name="tool_draft_email")(tool_draft_email)
+                            agent.register_for_llm(name="tool_send_email", description="Sends an email.")(tool_send_email)
+                            user_proxy.register_for_execution(name="tool_send_email")(tool_send_email)
+                        elif mcp_id == "mcp-blender":
+                            def custom_blender_tool(script_content: str):
+                                return tool_run_blender_script(script_content, output_path=save_loc)
+                            agent.register_for_llm(name="tool_run_blender_script", description="Executes Blender Python script (bpy).")(custom_blender_tool)
+                            user_proxy.register_for_execution(name="tool_run_blender_script")(custom_blender_tool)
+                        elif mcp_id == "mcp-server": # generic fallback
+                            agent.register_for_llm(name="tool_math_calculate", description="Calculates math expressions")(tool_math_calculate)
+                            user_proxy.register_for_execution(name="tool_math_calculate")(tool_math_calculate)
+                            agent.register_for_llm(name="tool_get_time", description="Returns current date and time")(tool_get_time)
+                            user_proxy.register_for_execution(name="tool_get_time")(tool_get_time)
+                            agent.register_for_llm(name="tool_get_system_info", description="Returns system OS and Python version")(tool_get_system_info)
+                            user_proxy.register_for_execution(name="tool_get_system_info")(tool_get_system_info)
+                            agent.register_for_llm(name="tool_get_weather", description="Returns the weather for a given city")(tool_get_weather)
+                            user_proxy.register_for_execution(name="tool_get_weather")(tool_get_weather)
+                            agent.register_for_llm(name="tool_list_files", description="Lists files in a given directory")(tool_list_files)
+                            user_proxy.register_for_execution(name="tool_list_files")(tool_list_files)
 
                 pipeline_tasks[task_id]["logs"].append(f"[{node_name}] Chat startet...")
                 chat_result = user_proxy.initiate_chat(agent, message=current_payload, summary_method="last_msg")

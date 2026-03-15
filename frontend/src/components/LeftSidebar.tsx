@@ -32,7 +32,10 @@ const categories = [
       { id: 'mcp-time', type: 'mcp', name: 'Zeit Server', description: 'MCP: Liefert aktuelle Systemzeit und Datum', icon: Server },
       { id: 'mcp-system', type: 'mcp', name: 'System Server', description: 'MCP: Liefert OS und Python Versionsdaten', icon: Server },
       { id: 'mcp-weather', type: 'mcp', name: 'Wetter Server', description: 'MCP: Liefert aktuelle Wetterdaten', icon: Server },
-      { id: 'mcp-file', type: 'mcp', name: 'Datei Server', description: 'MCP: Listet Dateien im Workspace-Verzeichnis auf', icon: Server },
+      { id: 'mcp-file', type: 'mcp', name: 'Datei Server', description: 'MCP: Analysiert Ordner, kopiert, benennt um, erstellt Backups', icon: Server },
+      { id: 'mcp-data', type: 'mcp', name: 'Excel / CSV Analyzer', description: 'MCP: Analysiert Excel/CSV Dateien mit Pandas', icon: Server },
+      { id: 'mcp-email', type: 'mcp', name: 'Email Integration', description: 'MCP: Liest E-Mails, erstellt Entwürfe und sendet E-Mails', icon: Server },
+      { id: 'mcp-blender', type: 'mcp', name: 'Blender 3D Automation', description: 'MCP: Führt Blender-Scripts im Hintergrund aus', icon: Server },
     ]
   },
   {

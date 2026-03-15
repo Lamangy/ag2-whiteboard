@@ -2,20 +2,28 @@ import { Handle, Position } from '@xyflow/react';
 import { Bot, Network, Wrench, Server, Repeat } from 'lucide-react';
 
 export function BaseNode({ data, selected }: any) {
+  const isStart = data.id === 'start';
+  const isEnd = data.id === 'end';
+  const bgColor = isStart ? 'bg-blue-50' : (isEnd ? 'bg-red-50' : 'bg-white');
+  const borderColor = isStart ? 'border-blue-400' : (isEnd ? 'border-red-400' : 'border-slate-300');
+  const ringColor = isStart ? 'ring-blue-500' : (isEnd ? 'ring-red-500' : 'ring-blue-400');
+  const textColor = isStart ? 'text-blue-700' : (isEnd ? 'text-red-700' : 'text-slate-700');
+  const handleColor = isStart ? 'bg-blue-500' : (isEnd ? 'bg-red-500' : 'bg-slate-400');
+
   return (
-    <div className={`node-base bg-white border-slate-300 shadow-md rounded-xl p-4 hover:shadow-xl transition-shadow border-2 ${selected ? 'ring-2 ring-blue-400' : ''}`}>
-      <Handle type="target" position={Position.Left} className="w-3 h-3 bg-slate-400" />
-      <div className="flex items-center gap-2 mb-2 text-slate-700">
+    <div className={`node-base ${bgColor} ${borderColor} shadow-md rounded-xl p-4 hover:shadow-xl transition-shadow border-2 ${selected ? `ring-2 ${ringColor}` : ''}`}>
+      {!isStart && <Handle type="target" position={Position.Left} className={`w-3 h-3 ${handleColor}`} />}
+      <div className={`flex items-center gap-2 mb-2 ${textColor}`}>
         <Network size={16} />
         <span className="font-bold text-sm">{data.label}</span>
       </div>
-      <Handle type="source" position={Position.Right} className="w-3 h-3 bg-slate-400" />
+      {!isEnd && <Handle type="source" position={Position.Right} className={`w-3 h-3 ${handleColor}`} />}
     </div>
   );
 }
 
-export function AgentNode({ data, selected }: any) {
-  const isGroup = data.type === 'groupchat';
+export function AgentNode({ data, selected, type }: any) {
+  const isGroup = type === 'groupchat' || data.type === 'groupchat';
   return (
     <div className={`node-base bg-white shadow-md rounded-xl p-4 hover:shadow-xl transition-shadow border-2 ${isGroup ? 'border-purple-400' : 'border-green-400'} ${selected ? (isGroup ? 'ring-2 ring-purple-500' : 'ring-2 ring-green-500') : ''}`}>
       <Handle type="target" position={Position.Left} className={`w-3 h-3 ${isGroup ? 'bg-purple-500' : 'bg-green-500'}`} />
