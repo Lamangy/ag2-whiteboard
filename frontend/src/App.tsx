@@ -41,6 +41,8 @@ function PipelineBuilder() {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [savedBlueprints, setSavedBlueprints] = useState<any[]>([]);
+  const [presetBlueprints, setPresetBlueprints] = useState<any[]>([]);
+  const [activeLoadTab, setActiveLoadTab] = useState<'saved' | 'presets'>('saved');
 
   const { screenToFlowPosition } = useReactFlow();
 
@@ -111,6 +113,8 @@ function PipelineBuilder() {
     try {
       const res = await axios.get('http://localhost:8000/elements');
       setSavedBlueprints(res.data);
+      const resPresets = await axios.get('http://localhost:8000/preset_blueprints');
+      setPresetBlueprints(resPresets.data);
       setShowLoadModal(true);
     } catch (e) { alert("Fehler beim Abrufen der Blueprints."); }
   };
@@ -204,17 +208,28 @@ function PipelineBuilder() {
       
       {showLoadModal && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-xl w-[400px] overflow-hidden">
+          <div className="bg-white rounded-lg shadow-xl w-[500px] max-h-[80vh] flex flex-col overflow-hidden">
             <div className="px-4 py-3 border-b bg-slate-50 flex justify-between items-center">
               <span className="font-bold text-slate-700">Blueprint laden</span>
               <button onClick={() => setShowLoadModal(false)} className="text-slate-400 hover:text-slate-700"><X size={18} /></button>
             </div>
-            <div className="p-4 flex flex-col gap-2 max-h-[300px] overflow-y-auto">
-              {savedBlueprints.length === 0 ? <p className="text-sm text-slate-500">Nichts gefunden.</p> : 
-                savedBlueprints.map(bp => (
-                  <button key={bp.id} onClick={() => {setNodes(bp.nodes); setEdges(bp.edges); setShowLoadModal(false);}} className="text-left px-3 py-2 border rounded hover:bg-slate-50 text-sm font-medium text-slate-700">{bp.name}</button>
-                ))
-              }
+            <div className="flex border-b">
+              <button onClick={() => setActiveLoadTab('saved')} className={`flex-1 py-2 text-sm font-bold ${activeLoadTab === 'saved' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-slate-500 hover:bg-slate-50'}`}>Eigene ({savedBlueprints.length})</button>
+              <button onClick={() => setActiveLoadTab('presets')} className={`flex-1 py-2 text-sm font-bold ${activeLoadTab === 'presets' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-slate-500 hover:bg-slate-50'}`}>Vorlagen ({presetBlueprints.length})</button>
+            </div>
+            <div className="p-4 flex flex-col gap-2 overflow-y-auto flex-1">
+              {activeLoadTab === 'saved' && (
+                savedBlueprints.length === 0 ? <p className="text-sm text-slate-500">Keine eigenen Blueprints gefunden.</p> :
+                  savedBlueprints.map(bp => (
+                    <button key={bp.id} onClick={() => {setNodes(bp.nodes); setEdges(bp.edges); setShowLoadModal(false);}} className="text-left px-3 py-2 border rounded hover:bg-slate-50 text-sm font-medium text-slate-700">{bp.name}</button>
+                  ))
+              )}
+              {activeLoadTab === 'presets' && (
+                presetBlueprints.length === 0 ? <p className="text-sm text-slate-500">Keine Vorlagen gefunden.</p> :
+                  presetBlueprints.map(bp => (
+                    <button key={bp.id} onClick={() => {setNodes(bp.nodes); setEdges(bp.edges); setShowLoadModal(false);}} className="text-left px-3 py-2 border rounded hover:bg-slate-50 text-sm font-medium text-slate-700">{bp.name}</button>
+                  ))
+              )}
             </div>
           </div>
         </div>

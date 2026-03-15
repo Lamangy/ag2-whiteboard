@@ -10,6 +10,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import httpx
+import logging
 
 from autogen import ConversableAgent, UserProxyAgent, GroupChat, GroupChatManager
 
@@ -22,6 +23,13 @@ from weather_server import tool_get_weather
 from file_server import tool_list_files
 
 from playwright.sync_api import sync_playwright
+
+# Filter out /pipeline/status polling logs
+class EndpointFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return "/pipeline/status" not in record.getMessage()
+
+logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
 
 app = FastAPI(title="AG2 Whiteboard Pipeline Builder")
 
@@ -127,8 +135,8 @@ def tool_pdf_analysis(file_path: Annotated[str, "Der Dateiname oder Pfad der PDF
 
 # --- NANO BANANA 2 TOOLS (Google GenAI SDK) ---
 
-def tool_image_generation(prompt: Annotated[str, "Englische Beschreibung für das Bild"]) -> str:
-    print(f"\n[Nano Banana 2] Generiere Bild: '{prompt}'\n")
+def tool_image_generation(prompt: Annotated[str, "Englische Beschreibung für das Bild"], save_path: str = "") -> str:
+    print(f"\n[Nano Banana 2] Generiere Bild: '{prompt}' (Ziel: '{save_path}')\n")
     api_key = get_gemini_key()
     if not api_key: return "Fehler: Gemini API-Key fehlt."
     
@@ -141,13 +149,23 @@ def tool_image_generation(prompt: Annotated[str, "Englische Beschreibung für da
             contents=[prompt]
         )
         
-        filepath = os.path.join(IMAGE_DIR, f"gen_{uuid.uuid4().hex[:8]}.png")
+        if save_path:
+            if os.path.isdir(save_path) or save_path.endswith("/") or save_path.endswith("\\"):
+                os.makedirs(save_path, exist_ok=True)
+                filepath = os.path.join(save_path, f"gen_{uuid.uuid4().hex[:8]}.png")
+            else:
+                os.makedirs(os.path.dirname(save_path) if os.path.dirname(save_path) else ".", exist_ok=True)
+                filepath = save_path
+        else:
+            filepath = os.path.join(IMAGE_DIR, f"gen_{uuid.uuid4().hex[:8]}.png")
+
+        filepath = os.path.abspath(filepath)
         
         for part in response.parts:
             if getattr(part, 'inline_data', None) is not None:
                 image = part.as_image()
                 image.save(filepath)
-                return f"Erfolg! Bild generiert und gespeichert unter: {os.path.abspath(filepath)}"
+                return f"Erfolg! Bild generiert und gespeichert unter: {filepath}"
                 
         return "Fehler: Die API hat kein Bild in der Antwort zurückgegeben."
     except ImportError:
@@ -155,7 +173,7 @@ def tool_image_generation(prompt: Annotated[str, "Englische Beschreibung für da
     except Exception as e:
         return f"Nano Banana 2 API Fehler: {str(e)}"
 
-def tool_image_edit(prompt: Annotated[str, "Was soll am Bild geändert werden?"], image_filename: Annotated[str, "Dateiname des Quellbildes"]) -> str:
+def tool_image_edit(prompt: Annotated[str, "Was soll am Bild geändert werden?"], image_filename: Annotated[str, "Dateiname des Quellbildes"], save_path: str = "") -> str:
     print(f"\n[Nano Banana 2] Editiere Bild '{image_filename}' mit: '{prompt}'\n")
     api_key = get_gemini_key()
     if not api_key: return "Fehler: Gemini API-Key fehlt."
@@ -175,18 +193,29 @@ def tool_image_edit(prompt: Annotated[str, "Was soll am Bild geändert werden?"]
             contents=[source_image, prompt]
         )
         
-        filepath = os.path.join(IMAGE_DIR, f"edit_{uuid.uuid4().hex[:8]}.png")
+        if save_path:
+            if os.path.isdir(save_path) or save_path.endswith("/") or save_path.endswith("\\"):
+                os.makedirs(save_path, exist_ok=True)
+                filepath = os.path.join(save_path, f"edit_{uuid.uuid4().hex[:8]}.png")
+            else:
+                os.makedirs(os.path.dirname(save_path) if os.path.dirname(save_path) else ".", exist_ok=True)
+                filepath = save_path
+        else:
+            filepath = os.path.join(IMAGE_DIR, f"edit_{uuid.uuid4().hex[:8]}.png")
+
+        filepath = os.path.abspath(filepath)
+
         for part in response.parts:
             if getattr(part, 'inline_data', None) is not None:
                 image = part.as_image()
                 image.save(filepath)
-                return f"Erfolg! Bearbeitetes Bild gespeichert unter: {os.path.abspath(filepath)}"
+                return f"Erfolg! Bearbeitetes Bild gespeichert unter: {filepath}"
                 
         return "Fehler: Die API hat kein bearbeitetes Bild zurückgegeben."
     except Exception as e:
         return f"Nano Banana 2 Edit Fehler: {str(e)}"
 
-def tool_style_transfer(prompt: Annotated[str, "Anweisung zur Kombination"], content_image: Annotated[str, "Hauptbild"], style_image: Annotated[str, "Stil-Vorlagen Bild"]) -> str:
+def tool_style_transfer(prompt: Annotated[str, "Anweisung zur Kombination"], content_image: Annotated[str, "Hauptbild"], style_image: Annotated[str, "Stil-Vorlagen Bild"], save_path: str = "") -> str:
     print(f"\n[Nano Banana 2] Style Transfer... \n")
     api_key = get_gemini_key()
     if not api_key: return "Fehler: Gemini API-Key fehlt."
@@ -207,12 +236,23 @@ def tool_style_transfer(prompt: Annotated[str, "Anweisung zur Kombination"], con
             contents=[img_content, img_style, prompt]
         )
         
-        filepath = os.path.join(IMAGE_DIR, f"style_{uuid.uuid4().hex[:8]}.png")
+        if save_path:
+            if os.path.isdir(save_path) or save_path.endswith("/") or save_path.endswith("\\"):
+                os.makedirs(save_path, exist_ok=True)
+                filepath = os.path.join(save_path, f"style_{uuid.uuid4().hex[:8]}.png")
+            else:
+                os.makedirs(os.path.dirname(save_path) if os.path.dirname(save_path) else ".", exist_ok=True)
+                filepath = save_path
+        else:
+            filepath = os.path.join(IMAGE_DIR, f"style_{uuid.uuid4().hex[:8]}.png")
+
+        filepath = os.path.abspath(filepath)
+
         for part in response.parts:
             if getattr(part, 'inline_data', None) is not None:
                 image = part.as_image()
                 image.save(filepath)
-                return f"Erfolg! Style-Transfer Bild gespeichert unter: {os.path.abspath(filepath)}"
+                return f"Erfolg! Style-Transfer Bild gespeichert unter: {filepath}"
                 
         return "Fehler: Die API hat kein Style-Transfer Bild zurückgegeben."
     except Exception as e:
@@ -353,7 +393,7 @@ def run_ag2_pipeline_task(task_id: str, blueprint_data: dict):
                         raise e
                 else:
                     pipeline_tasks[task_id]["logs"].append(f"[{node_name}] Warnung: Keine Agenten mit GroupChat verbunden.")
-                
+
                 current_node_id = next_node_id
 
             elif node_type == "iterator":
@@ -384,7 +424,7 @@ def run_ag2_pipeline_task(task_id: str, blueprint_data: dict):
                             item_str = json.dumps(item) if not isinstance(item, str) else item
                             pipeline_tasks[task_id]["logs"].append(f"[{node_name}] Verarbeite Element {i+1}/{len(items_to_iterate)}...")
 
-                            if loop_target_node["type"] == "agent":
+                            if loop_target_node["type"] in ["agent", "groupchat"]:
                                 item_res, chat_result = run_agent_node(loop_target_node, item_str, nodes, edges, task_id)
                                 results.append(item_res)
                             else:
@@ -472,6 +512,16 @@ async def list_blueprints():
     for f in os.listdir(BLUEPRINTS_DIR):
         if f.endswith(".json"):
             with open(os.path.join(BLUEPRINTS_DIR, f), "r", encoding="utf-8") as file: bps.append(json.load(file))
+    return bps
+
+@app.get("/preset_blueprints")
+async def list_preset_blueprints():
+    bps = []
+    preset_dir = os.path.join(DATA_DIR, "preset_blueprints")
+    if os.path.exists(preset_dir):
+        for f in os.listdir(preset_dir):
+            if f.endswith(".json"):
+                with open(os.path.join(preset_dir, f), "r", encoding="utf-8") as file: bps.append(json.load(file))
     return bps
 
 @app.post("/pipeline/start")

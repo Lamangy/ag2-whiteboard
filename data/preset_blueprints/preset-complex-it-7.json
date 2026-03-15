@@ -1,0 +1,95 @@
+{
+    "id": "preset-complex-it-7",
+    "name": "Komplex: Batch Image Generation 7",
+    "nodes": [
+        {
+            "id": "start",
+            "type": "node",
+            "position": {
+                "x": 100,
+                "y": 100
+            },
+            "data": {
+                "id": "start",
+                "name": "Start",
+                "prompt": "{\"items\": [\"Hund\", \"Katze\", \"Maus\"]}"
+            }
+        },
+        {
+            "id": "iterator",
+            "type": "iterator",
+            "position": {
+                "x": 300,
+                "y": 100
+            },
+            "data": {
+                "id": "iterator",
+                "name": "Iterator",
+                "arrayKey": "items"
+            }
+        },
+        {
+            "id": "a1",
+            "type": "agent",
+            "position": {
+                "x": 600,
+                "y": -50
+            },
+            "data": {
+                "id": "a1",
+                "name": "Beschreiber",
+                "description": "Beschreibe das Tier kurz.",
+                "provider": "ollama",
+                "model": "llama3"
+            }
+        },
+        {
+            "id": "t1",
+            "type": "tool",
+            "position": {
+                "x": 600,
+                "y": -150
+            },
+            "data": {
+                "id": "image-generation",
+                "name": "Bild Gen"
+            }
+        },
+        {
+            "id": "end",
+            "type": "node",
+            "position": {
+                "x": 900,
+                "y": 100
+            },
+            "data": {
+                "id": "end",
+                "name": "Ende"
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "start",
+            "target": "iterator"
+        },
+        {
+            "id": "e2",
+            "source": "iterator",
+            "target": "a1",
+            "sourceHandle": "loop"
+        },
+        {
+            "id": "e3",
+            "source": "a1",
+            "target": "t1"
+        },
+        {
+            "id": "e4",
+            "source": "iterator",
+            "target": "end",
+            "sourceHandle": "next"
+        }
+    ]
+}

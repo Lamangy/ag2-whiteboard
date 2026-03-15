@@ -28,7 +28,11 @@ const categories = [
     id: 'mcp',
     name: 'MCP',
     items: [
-      { id: 'mcp-server', type: 'mcp', name: 'MCP Server', description: 'Stellt externe Ressourcen via MCP bereit', icon: Server }
+      { id: 'mcp-math', type: 'mcp', name: 'Mathe Server', description: 'MCP: Berechnet komplexe mathematische Formeln', icon: Server },
+      { id: 'mcp-time', type: 'mcp', name: 'Zeit Server', description: 'MCP: Liefert aktuelle Systemzeit und Datum', icon: Server },
+      { id: 'mcp-system', type: 'mcp', name: 'System Server', description: 'MCP: Liefert OS und Python Versionsdaten', icon: Server },
+      { id: 'mcp-weather', type: 'mcp', name: 'Wetter Server', description: 'MCP: Liefert aktuelle Wetterdaten', icon: Server },
+      { id: 'mcp-file', type: 'mcp', name: 'Datei Server', description: 'MCP: Listet Dateien im Workspace-Verzeichnis auf', icon: Server },
     ]
   },
   {

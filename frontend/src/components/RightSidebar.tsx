@@ -155,6 +155,14 @@ export default function RightSidebar({ selectedNode, updateNodeData, deleteNode 
 		  <label className="text-sm font-semibold text-slate-700">Name / Rolle</label>
           <input type="text" value={(data.name as string) || (data.label as string) || ''} onChange={(e) => handleChange('name', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
+
+        {type === 'tool' && (data.id === 'image-generation' || data.id === 'image-edit' || data.id === 'style-transfer') && (
+          <div className="flex flex-col gap-1.5 p-3 bg-purple-50 border border-purple-200 rounded-lg mt-2">
+            <label className="text-sm font-bold text-purple-800">Speicherort (Optional)</label>
+            <input type="text" value={(data.savePath as string) || ''} onChange={(e) => handleChange('savePath', e.target.value)} placeholder="z.B. /app/data/images oder C:\Bilder" className="w-full px-3 py-2 border border-purple-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500" />
+            <p className="text-xs text-purple-700 mt-1">Absoluter Pfad zum Speichern des Bildes. Bleibt das Feld leer, wird der Standardordner genutzt.</p>
+          </div>
+        )}
         
         {(type === 'agent' || type === 'groupchat') && (
           <div className="flex flex-col gap-1.5">
