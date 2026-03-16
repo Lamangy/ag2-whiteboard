@@ -2,13 +2,14 @@ import { useState, useCallback, useMemo } from 'react';
 import { ReactFlow, Background, BackgroundVariant, Controls, applyNodeChanges, applyEdgeChanges, addEdge, ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import type { NodeChange, EdgeChange, Connection, Edge, Node } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Save, FolderOpen, Trash2, X, Play, AlertTriangle, CheckCircle, Settings as SettingsIcon } from 'lucide-react';
+import { Save, FolderOpen, Trash2, X, Play, AlertTriangle, CheckCircle, Settings as SettingsIcon, FileText } from 'lucide-react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 
 import LeftSidebar from './components/LeftSidebar';
 import RightSidebar from './components/RightSidebar';
 import SettingsModal from './components/SettingsModal';
+import DocsModal from './components/DocsModal';
 import { AgentNode, BaseNode, ToolNode, McpNode, IteratorNode } from './components/CustomNodes';
 
 const checkConnectionRules = (sourceNode: Node, targetNode: Node) => {
@@ -38,6 +39,7 @@ function PipelineBuilder() {
   const [totalTokens, setTotalTokens] = useState<number>(0);
   
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showDocsModal, setShowDocsModal] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [savedBlueprints, setSavedBlueprints] = useState<any[]>([]);
@@ -156,6 +158,9 @@ function PipelineBuilder() {
           <button onClick={() => {if(window.confirm("Whiteboard leeren?")) {setNodes([]); setEdges([]);}}} className="p-2 text-red-600 hover:bg-red-50 rounded" title="Leeren"><Trash2 size={20} /></button>
         </div>
         <div className="flex items-center gap-4">
+          <button onClick={() => setShowDocsModal(true)} className="px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded font-bold text-sm hover:bg-blue-100 flex items-center gap-2 transition-colors">
+            <FileText size={16} /> Anleitung
+          </button>
           {/* HIER IST DEIN EINSTELLUNGS-BUTTON ZURÜCK! */}
           <button onClick={() => setShowSettingsModal(true)} className="px-4 py-2 bg-slate-100 border border-slate-300 rounded font-medium text-sm hover:bg-slate-200 flex items-center gap-2">
             <SettingsIcon size={16} /> Einstellungen
@@ -204,6 +209,7 @@ function PipelineBuilder() {
       </div>
 
       {/* HIER SIND DIE MODALS WIEDER DRIN */}
+      {showDocsModal && <DocsModal onClose={() => setShowDocsModal(false)} />}
       {showSettingsModal && <SettingsModal onClose={() => setShowSettingsModal(false)} />}
       
       {showLoadModal && (

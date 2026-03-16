@@ -1,0 +1,76 @@
+{
+    "id": "bp-sim-9",
+    "name": "Einfach: Agent & Zeit Server",
+    "nodes": [
+        {
+            "id": "start",
+            "type": "node",
+            "position": {
+                "x": 100,
+                "y": 100
+            },
+            "data": {
+                "id": "start",
+                "name": "Starttrigger",
+                "prompt": "Einfacher Test-Lauf 9 mit Zeit Server."
+            }
+        },
+        {
+            "id": "a1",
+            "type": "agent",
+            "position": {
+                "x": 400,
+                "y": 100
+            },
+            "data": {
+                "id": "a1",
+                "name": "Assistent 9",
+                "description": "F\u00fchre die Aufgabe aus.",
+                "provider": "ollama",
+                "model": "llama3"
+            }
+        },
+        {
+            "id": "m1",
+            "type": "mcp",
+            "position": {
+                "x": 400,
+                "y": -50
+            },
+            "data": {
+                "id": "mcp-time",
+                "name": "Zeit Server",
+                "savePath": "/app/data/workspace"
+            }
+        },
+        {
+            "id": "end",
+            "type": "node",
+            "position": {
+                "x": 700,
+                "y": 100
+            },
+            "data": {
+                "id": "end",
+                "name": "Endnode"
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "start",
+            "target": "a1"
+        },
+        {
+            "id": "e2",
+            "source": "a1",
+            "target": "m1"
+        },
+        {
+            "id": "e3",
+            "source": "a1",
+            "target": "end"
+        }
+    ]
+}

@@ -1,0 +1,114 @@
+{
+    "id": "bp-med-6",
+    "name": "Mittel: Datenanalyse & Report 6",
+    "nodes": [
+        {
+            "id": "start",
+            "type": "node",
+            "position": {
+                "x": 100,
+                "y": 100
+            },
+            "data": {
+                "id": "start",
+                "name": "Starttrigger",
+                "prompt": "Medium Pipeline 6"
+            }
+        },
+        {
+            "id": "a1",
+            "type": "agent",
+            "position": {
+                "x": 300,
+                "y": 100
+            },
+            "data": {
+                "id": "a1",
+                "name": "Daten Analyst",
+                "description": "Sammle Daten mit Tool.",
+                "provider": "ollama",
+                "model": "llama3"
+            }
+        },
+        {
+            "id": "m1",
+            "type": "mcp",
+            "position": {
+                "x": 300,
+                "y": -50
+            },
+            "data": {
+                "id": "mcp-data",
+                "name": "Excel Analyzer",
+                "savePath": "/app/data/workspace"
+            }
+        },
+        {
+            "id": "a2",
+            "type": "agent",
+            "position": {
+                "x": 600,
+                "y": 100
+            },
+            "data": {
+                "id": "a2",
+                "name": "Report Schreiber",
+                "description": "Fasse zusammen.",
+                "provider": "ollama",
+                "model": "llama3"
+            }
+        },
+        {
+            "id": "m2",
+            "type": "mcp",
+            "position": {
+                "x": 600,
+                "y": -50
+            },
+            "data": {
+                "id": "mcp-email",
+                "name": "Email Sender",
+                "savePath": "/app/data/workspace"
+            }
+        },
+        {
+            "id": "end",
+            "type": "node",
+            "position": {
+                "x": 900,
+                "y": 100
+            },
+            "data": {
+                "id": "end",
+                "name": "Endnode"
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "start",
+            "target": "a1"
+        },
+        {
+            "id": "e2",
+            "source": "a1",
+            "target": "m1"
+        },
+        {
+            "id": "e3",
+            "source": "a1",
+            "target": "a2"
+        },
+        {
+            "id": "e4",
+            "source": "a2",
+            "target": "m2"
+        },
+        {
+            "id": "e5",
+            "source": "a2",
+            "target": "end"
+        }
+    ]
+}

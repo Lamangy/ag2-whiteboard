@@ -1,0 +1,96 @@
+{
+    "id": "bp-com-10",
+    "name": "Komplex: 3D Batch-Generierung 10",
+    "nodes": [
+        {
+            "id": "start",
+            "type": "node",
+            "position": {
+                "x": 100,
+                "y": 100
+            },
+            "data": {
+                "id": "start",
+                "name": "Starttrigger",
+                "prompt": "{\"assets\": [\"Schwert\", \"Schild\", \"Trank\"]}"
+            }
+        },
+        {
+            "id": "iterator",
+            "type": "iterator",
+            "position": {
+                "x": 300,
+                "y": 100
+            },
+            "data": {
+                "id": "iterator",
+                "name": "Iterator (Loop)",
+                "arrayKey": "assets"
+            }
+        },
+        {
+            "id": "a1",
+            "type": "agent",
+            "position": {
+                "x": 600,
+                "y": 0
+            },
+            "data": {
+                "id": "a1",
+                "name": "Asset Generator",
+                "description": "Schreibe Blender Skript f\u00fcr Asset.",
+                "provider": "ollama",
+                "model": "llama3"
+            }
+        },
+        {
+            "id": "m1",
+            "type": "mcp",
+            "position": {
+                "x": 600,
+                "y": -120
+            },
+            "data": {
+                "id": "mcp-blender",
+                "name": "Blender 3D Automation",
+                "savePath": "/app/data/workspace"
+            }
+        },
+        {
+            "id": "end",
+            "type": "node",
+            "position": {
+                "x": 900,
+                "y": 200
+            },
+            "data": {
+                "id": "end",
+                "name": "Endnode"
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "start",
+            "target": "iterator"
+        },
+        {
+            "id": "e2",
+            "source": "iterator",
+            "target": "a1",
+            "sourceHandle": "loop"
+        },
+        {
+            "id": "e3",
+            "source": "a1",
+            "target": "m1"
+        },
+        {
+            "id": "e4",
+            "source": "iterator",
+            "target": "end",
+            "sourceHandle": "next"
+        }
+    ]
+}

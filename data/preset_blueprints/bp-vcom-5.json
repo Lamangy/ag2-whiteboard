@@ -1,0 +1,154 @@
+{
+    "id": "bp-vcom-5",
+    "name": "Sehr Komplex: Team & Datei-Sicherung 5",
+    "nodes": [
+        {
+            "id": "start",
+            "type": "node",
+            "position": {
+                "x": 100,
+                "y": 100
+            },
+            "data": {
+                "id": "start",
+                "name": "Starttrigger",
+                "prompt": "Gro\u00dfprojekt 5 planen und Dateien sichern."
+            }
+        },
+        {
+            "id": "g1",
+            "type": "groupchat",
+            "position": {
+                "x": 300,
+                "y": 100
+            },
+            "data": {
+                "id": "g1",
+                "name": "GroupChat (Team-Hub)",
+                "description": "Experten Hub"
+            }
+        },
+        {
+            "id": "a1",
+            "type": "agent",
+            "position": {
+                "x": 300,
+                "y": 300
+            },
+            "data": {
+                "id": "a1",
+                "name": "Projektmanager",
+                "description": "Erstellt JSON Liste von Tasks.",
+                "provider": "ollama",
+                "model": "llama3"
+            }
+        },
+        {
+            "id": "a2",
+            "type": "agent",
+            "position": {
+                "x": 500,
+                "y": 300
+            },
+            "data": {
+                "id": "a2",
+                "name": "System Admin",
+                "description": "Nutzt Datei Server.",
+                "provider": "ollama",
+                "model": "llama3"
+            }
+        },
+        {
+            "id": "m1",
+            "type": "mcp",
+            "position": {
+                "x": 500,
+                "y": 450
+            },
+            "data": {
+                "id": "mcp-file",
+                "name": "Datei Server",
+                "savePath": "/app/data/workspace"
+            }
+        },
+        {
+            "id": "iterator",
+            "type": "iterator",
+            "position": {
+                "x": 600,
+                "y": 100
+            },
+            "data": {
+                "id": "iterator",
+                "name": "Iterator (Loop)",
+                "arrayKey": ""
+            }
+        },
+        {
+            "id": "a3",
+            "type": "agent",
+            "position": {
+                "x": 800,
+                "y": -50
+            },
+            "data": {
+                "id": "a3",
+                "name": "Reviewer",
+                "description": "Pr\u00fcft Task.",
+                "provider": "ollama",
+                "model": "llama3"
+            }
+        },
+        {
+            "id": "end",
+            "type": "node",
+            "position": {
+                "x": 1000,
+                "y": 200
+            },
+            "data": {
+                "id": "end",
+                "name": "Endnode"
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "start",
+            "target": "g1"
+        },
+        {
+            "id": "e2",
+            "source": "g1",
+            "target": "a1"
+        },
+        {
+            "id": "e3",
+            "source": "g1",
+            "target": "a2"
+        },
+        {
+            "id": "e4",
+            "source": "a2",
+            "target": "m1"
+        },
+        {
+            "id": "e5",
+            "source": "g1",
+            "target": "iterator"
+        },
+        {
+            "id": "e6",
+            "source": "iterator",
+            "target": "a3",
+            "sourceHandle": "loop"
+        },
+        {
+            "id": "e7",
+            "source": "iterator",
+            "target": "end",
+            "sourceHandle": "next"
+        }
+    ]
+}
