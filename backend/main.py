@@ -356,7 +356,7 @@ def run_ag2_pipeline_task(task_id: str, blueprint_data: dict):
 
                             agent.register_for_llm(name="tool_list_files", description="Lists files in a given directory.")(custom_tool_list_files)
                             user_proxy.register_for_execution(name="tool_list_files")(custom_tool_list_files)
-                            agent.register_for_llm(name="tool_save_file", description="Saves text content to a file.")(custom_tool_save_file)
+                            agent.register_for_llm(name="tool_save_file", description="Saves text content to a file. Call this tool and pass 'content' (the actual string data/code) and 'filename' (e.g. 'index.html').")(custom_tool_save_file)
                             user_proxy.register_for_execution(name="tool_save_file")(custom_tool_save_file)
                             agent.register_for_llm(name="tool_analyze_folder", description="Analyzes a folder structure.")(custom_tool_analyze_folder)
                             user_proxy.register_for_execution(name="tool_analyze_folder")(custom_tool_analyze_folder)

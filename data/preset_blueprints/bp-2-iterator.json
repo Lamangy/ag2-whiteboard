@@ -1,0 +1,78 @@
+{
+    "id": "bp-image-iterator",
+    "name": "Blueprint 2: Iterator (4 Bilder)",
+    "nodes": [
+        {
+            "id": "start-1",
+            "type": "node",
+            "position": {"x": 100, "y": 200},
+            "data": {
+                "id": "start",
+                "label": "Starttrigger",
+                "prompt": "[\"A futuristic city at sunset\", \"A cyberpunk character in an alley\", \"A majestic dragon on a mountain\", \"A peaceful spaceship in orbit\"]"
+            }
+        },
+        {
+            "id": "iter-1",
+            "type": "iterator",
+            "position": {"x": 400, "y": 200},
+            "data": {
+                "label": "Iterator (Loop)"
+            }
+        },
+        {
+            "id": "agent-1",
+            "type": "agent",
+            "position": {"x": 700, "y": 100},
+            "data": {
+                "name": "Image Generator",
+                "description": "Du bist ein KI-Assistent. Deine einzige Aufgabe ist es, die englische Beschreibung direkt an das Tool für die Bilderstellung zu senden. Antworte mit einer kurzen Bestätigung und beende mit TERMINATE.",
+                "provider": "gemini",
+                "model": "gemini-1.5-flash"
+            }
+        },
+        {
+            "id": "tool-img",
+            "type": "tool",
+            "position": {"x": 1000, "y": 100},
+            "data": {
+                "id": "image-generation",
+                "name": "Nano Banana 2",
+                "savePath": "C:/Bilder/"
+            }
+        },
+        {
+            "id": "end-1",
+            "type": "node",
+            "position": {"x": 700, "y": 400},
+            "data": {
+                "id": "end",
+                "label": "Endnode"
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "start-1",
+            "target": "iter-1"
+        },
+        {
+            "id": "e-loop",
+            "source": "iter-1",
+            "sourceHandle": "loop",
+            "target": "agent-1"
+        },
+        {
+            "id": "e-tool",
+            "source": "agent-1",
+            "target": "tool-img"
+        },
+        {
+            "id": "e-next",
+            "source": "iter-1",
+            "sourceHandle": "next",
+            "target": "end-1"
+        }
+    ]
+}

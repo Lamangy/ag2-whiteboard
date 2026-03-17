@@ -1,0 +1,63 @@
+{
+    "id": "bp-image-creation",
+    "name": "Blueprint 1: Bilderstellung",
+    "nodes": [
+        {
+            "id": "start-1",
+            "type": "node",
+            "position": {"x": 100, "y": 200},
+            "data": {
+                "id": "start",
+                "label": "Starttrigger",
+                "prompt": "Generiere ein episches Bild von einem Astronauten auf dem Mars."
+            }
+        },
+        {
+            "id": "agent-1",
+            "type": "agent",
+            "position": {"x": 400, "y": 200},
+            "data": {
+                "name": "Image Creator AI",
+                "description": "Du bist ein KI-Assistent. Deine einzige Aufgabe ist es, die Beschreibung in ein englisches Prompt zu übersetzen und das Tool für die Bilderstellung aufzurufen. Nach erfolgreicher Generierung antworte ZWINGEND mit TERMINATE.",
+                "provider": "gemini",
+                "model": "gemini-1.5-flash"
+            }
+        },
+        {
+            "id": "tool-img",
+            "type": "tool",
+            "position": {"x": 700, "y": 200},
+            "data": {
+                "id": "image-generation",
+                "name": "Nano Banana 2",
+                "savePath": "C:/Bilder/"
+            }
+        },
+        {
+            "id": "end-1",
+            "type": "node",
+            "position": {"x": 1000, "y": 200},
+            "data": {
+                "id": "end",
+                "label": "Endnode"
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "start-1",
+            "target": "agent-1"
+        },
+        {
+            "id": "e2",
+            "source": "agent-1",
+            "target": "tool-img"
+        },
+        {
+            "id": "e3",
+            "source": "agent-1",
+            "target": "end-1"
+        }
+    ]
+}

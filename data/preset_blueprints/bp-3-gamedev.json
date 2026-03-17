@@ -1,0 +1,125 @@
+{
+    "id": "bp-game-dev-complex",
+    "name": "Blueprint 3: Browser Game Development",
+    "nodes": [
+        {
+            "id": "start-1",
+            "type": "node",
+            "position": {"x": 100, "y": 300},
+            "data": {
+                "id": "start",
+                "label": "Starttrigger",
+                "prompt": "Wir entwickeln ein kleines Browsergame: Ein Raumschiff-Shooter (HTML/JS). Generiert zuerst 2 Bilder (ein Spieler-Raumschiff, ein Gegner-Raumschiff) und speichert diese als 'player.png' und 'enemy.png' in C:/Game/ ab. Erstellt dann eine funktionierende 'index.html', die diese Bilder verwendet, um das Spiel darzustellen und spielbar zu machen. Speichert den Code in C:/Game/index.html via MCP File Server. Arbeitet zusammen, bis alles erledigt ist."
+            }
+        },
+        {
+            "id": "gc-1",
+            "type": "groupchat",
+            "position": {"x": 400, "y": 300},
+            "data": {
+                "label": "Team Hub",
+                "provider": "gemini",
+                "model": "gemini-1.5-flash"
+            }
+        },
+        {
+            "id": "agent-lead",
+            "type": "agent",
+            "position": {"x": 700, "y": 50},
+            "data": {
+                "name": "Game Director",
+                "description": "Du bist der Game Director. Koordiniere das Team. 1. Beauftrage den 2D Artist mit den Bildern 'player.png' und 'enemy.png'. 2. Wenn die Bilder fertig sind, beauftrage den Gameplay Programmer mit dem Code. 3. Stelle sicher, dass der Code via MCP File Server unter C:/Game/index.html gespeichert wird. Wenn ALLES fertig ist, beende mit TERMINATE.",
+                "provider": "gemini",
+                "model": "gemini-1.5-flash"
+            }
+        },
+        {
+            "id": "agent-artist",
+            "type": "agent",
+            "position": {"x": 700, "y": 250},
+            "data": {
+                "name": "2D Game Artist",
+                "description": "Du erstellst die Spielgrafiken. Wenn der Director Bilder anfordert (z.B. Spieler oder Gegner), rufst du das Nano Banana Tool auf und generierst die Bilder. Speichere sie am vorgegebenen Pfad. Melde Vollzug.",
+                "provider": "gemini",
+                "model": "gemini-1.5-flash"
+            }
+        },
+        {
+            "id": "agent-coder",
+            "type": "agent",
+            "position": {"x": 700, "y": 450},
+            "data": {
+                "name": "Gameplay Programmer",
+                "description": "Du bist der Gameplay Programmer. Du schreibst sauberes HTML, CSS und JS (alles in einer index.html). Nutze die vom Artist generierten Bilder ('player.png' und 'enemy.png') in deinem Code. Wenn der Code fertig ist, ruf das MCP File Server Tool auf (tool_save_file) und speichere den kompletten Code exakt unter 'C:/Game/index.html'. Melde Vollzug.",
+                "provider": "gemini",
+                "model": "gemini-1.5-flash"
+            }
+        },
+        {
+            "id": "tool-img",
+            "type": "tool",
+            "position": {"x": 1000, "y": 250},
+            "data": {
+                "id": "image-generation",
+                "name": "Nano Banana 2",
+                "savePath": "C:/Game/"
+            }
+        },
+        {
+            "id": "mcp-file",
+            "type": "mcp",
+            "position": {"x": 1000, "y": 450},
+            "data": {
+                "id": "mcp-file",
+                "name": "File Server",
+                "savePath": "C:/Game/"
+            }
+        },
+        {
+            "id": "end-1",
+            "type": "node",
+            "position": {"x": 400, "y": 550},
+            "data": {
+                "id": "end",
+                "label": "Endnode"
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "start-1",
+            "target": "gc-1"
+        },
+        {
+            "id": "e2",
+            "source": "gc-1",
+            "target": "agent-lead"
+        },
+        {
+            "id": "e3",
+            "source": "gc-1",
+            "target": "agent-artist"
+        },
+        {
+            "id": "e4",
+            "source": "gc-1",
+            "target": "agent-coder"
+        },
+        {
+            "id": "e5",
+            "source": "agent-artist",
+            "target": "tool-img"
+        },
+        {
+            "id": "e6",
+            "source": "agent-coder",
+            "target": "mcp-file"
+        },
+        {
+            "id": "e7",
+            "source": "gc-1",
+            "target": "end-1"
+        }
+    ]
+}
