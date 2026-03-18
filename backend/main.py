@@ -294,6 +294,12 @@ def run_ag2_pipeline_task(task_id: str, blueprint_data: dict):
                 llm_config = get_llm_config(provider, model_name)
                 system_msg = f"{next_node['data'].get('description', 'Assistant')}\n\nWICHTIG: Wenn du die gestellte Aufgabe vollständig erfüllt hast, beende deine finale Antwort ZWINGEND mit dem exakten Wort TERMINATE."
 
+                # If this agent connects to an iterator, force it to return a JSON array
+                for e in edges:
+                    if e["source"] == next_node["id"] and nodes[e["target"]]["type"] == "iterator":
+                        system_msg += "\n\nCRITICAL: Dein nächster Schritt ist ein Iterator. Du MUSST deine Antwort als gültiges JSON-Array formatieren, das die Elemente für die Iteration enthält (z.B. [\"Item 1\", \"Item 2\"]). Antworte NUR mit dem JSON-Array."
+                        break
+
                 agent = ConversableAgent(name=node_name.replace(" ", "_"), system_message=system_msg, llm_config=llm_config, human_input_mode="NEVER")
                 user_proxy = UserProxyAgent(name="System_Proxy", human_input_mode="NEVER", max_consecutive_auto_reply=2, is_termination_msg=lambda x: x.get("content", "") and "TERMINATE" in x.get("content", ""), code_execution_config={"use_docker": False})
 
@@ -462,15 +468,33 @@ def run_ag2_pipeline_task(task_id: str, blueprint_data: dict):
             elif node_type == "iterator":
                 try:
                     import json
-                    parsed_payload = json.loads(current_payload)
+                    import re
+
+                    # Versuche, ein JSON-Array oder Objekt aus dem Payload zu extrahieren (falls von Markdown umschlossen)
+                    clean_payload = current_payload
+                    json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', clean_payload)
+                    if json_match:
+                        clean_payload = json_match.group(1).strip()
+                    else:
+                        # Fallback: Suche nach dem ersten Array oder Objekt
+                        array_match = re.search(r'\[[\s\S]*\]|\{[\s\S]*\}', clean_payload)
+                        if array_match:
+                            clean_payload = array_match.group(0)
+
+                    try:
+                        parsed_payload = json.loads(clean_payload)
+                    except json.JSONDecodeError:
+                        pipeline_tasks[task_id]["logs"].append(f"[{node_name}] Warnung: Konnte Eingabe nicht als JSON parsen. Nutze Rohtext als einzelnes Element.")
+                        parsed_payload = [current_payload]
+
                     array_key = next_node["data"].get("arrayKey")
-                    
+
                     if array_key and isinstance(parsed_payload, dict) and array_key in parsed_payload:
                         items_to_iterate = parsed_payload[array_key]
                     elif isinstance(parsed_payload, list):
                         items_to_iterate = parsed_payload
                     else:
-                        items_to_iterate = [current_payload]
+                        items_to_iterate = [parsed_payload]
 
                     pipeline_tasks[task_id]["logs"].append(f"[{node_name}] Iteriere über {len(items_to_iterate)} Elemente...")
 
@@ -482,6 +506,11 @@ def run_ag2_pipeline_task(task_id: str, blueprint_data: dict):
                         current_node_id = next_node_id
                     else:
                         loop_target_node = nodes[loop_edge["target"]]
+                        if loop_target_node["type"] in ["tool", "mcp"]:
+                            error_msg = f"Struktur-Fehler: Ein Iterator kann keine Tools oder MCP-Server direkt aufrufen. Verbinden Sie den Iterator stattdessen mit einem 'Agent', und verbinden Sie das Tool mit dem Agenten."
+                            pipeline_tasks[task_id]["logs"].append(f"[{node_name}] ❌ {error_msg}")
+                            raise ValueError(error_msg)
+
                         results = []
                         for i, item in enumerate(items_to_iterate):
                             item_str = json.dumps(item) if not isinstance(item, str) else item
