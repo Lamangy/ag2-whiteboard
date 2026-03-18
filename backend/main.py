@@ -20,7 +20,7 @@ from math_server import tool_math_calculate
 from time_server import tool_get_time
 from system_server import tool_get_system_info
 from weather_server import tool_get_weather
-from file_server import tool_list_files
+from file_server import tool_list_files, tool_save_file, tool_load_file, tool_search_file
 
 from playwright.sync_api import sync_playwright
 
@@ -329,6 +329,15 @@ def run_ag2_pipeline_task(task_id: str, blueprint_data: dict):
 
                         agent.register_for_llm(name="tool_list_files", description="Lists files in a given directory")(tool_list_files)
                         user_proxy.register_for_execution(name="tool_list_files")(tool_list_files)
+
+                        agent.register_for_llm(name="tool_save_file", description="Saves text content to a file at the given absolute path")(tool_save_file)
+                        user_proxy.register_for_execution(name="tool_save_file")(tool_save_file)
+
+                        agent.register_for_llm(name="tool_load_file", description="Loads and reads text content from a file at the given absolute path")(tool_load_file)
+                        user_proxy.register_for_execution(name="tool_load_file")(tool_load_file)
+
+                        agent.register_for_llm(name="tool_search_file", description="Searches for a file by exact name or partial match within a directory and its subdirectories")(tool_search_file)
+                        user_proxy.register_for_execution(name="tool_search_file")(tool_search_file)
 
                 pipeline_tasks[task_id]["logs"].append(f"[{node_name}] Chat startet...")
                 chat_result = user_proxy.initiate_chat(agent, message=current_payload, summary_method="last_msg")

@@ -1,0 +1,187 @@
+{
+    "id": "browser-game-development",
+    "name": "Browser Game Development",
+    "nodes": [
+        {
+            "id": "start",
+            "type": "node",
+            "position": {
+                "x": 0,
+                "y": 100
+            },
+            "data": {
+                "id": "start",
+                "name": "Start",
+                "prompt": "Plane ein neues Browser-RPG mit Survival-Elementen. Erstelle eine JSON-Liste mit 2 spannenden Orten (Locations) und 2 NPCs (Non-Player Characters). Das Array muss im JSON unter dem Key 'assets' zu finden sein und jedes Asset muss einen Namen ('name') und einen ausführlichen, englischen Image-Prompt ('prompt') enthalten."
+            }
+        },
+        {
+            "id": "game-designer",
+            "type": "agent",
+            "position": {
+                "x": 250,
+                "y": 100
+            },
+            "data": {
+                "id": "game-designer",
+                "name": "Game Designer",
+                "description": "Du bist ein erfahrener Game Designer. Du planst Spiele und erstellst immer valides JSON als Ausgabe.",
+                "provider": "gemini",
+                "model": "gemini-1.5-flash"
+            }
+        },
+        {
+            "id": "browser-tool",
+            "type": "tool",
+            "position": {
+                "x": 250,
+                "y": -50
+            },
+            "data": {
+                "id": "browser-tool",
+                "name": "Web Browser"
+            }
+        },
+        {
+            "id": "iterator",
+            "type": "iterator",
+            "position": {
+                "x": 500,
+                "y": 100
+            },
+            "data": {
+                "id": "iterator",
+                "name": "Iterator",
+                "arrayKey": "assets"
+            }
+        },
+        {
+            "id": "2d-artist",
+            "type": "agent",
+            "position": {
+                "x": 750,
+                "y": 0
+            },
+            "data": {
+                "id": "2d-artist",
+                "name": "2D Artist Agent",
+                "description": "Du bist der 2D Artist für ein Browser Game. Du erhältst ein JSON-Objekt mit einem 'prompt'. Rufe die Funktion tool_image_generation auf, um dieses Bild zu generieren. Du bist ein Experte und rufst das Tool immer direkt auf. Antworte in JSON.",
+                "provider": "gemini",
+                "model": "gemini-1.5-flash"
+            }
+        },
+        {
+            "id": "nano-banana",
+            "type": "tool",
+            "position": {
+                "x": 750,
+                "y": -150
+            },
+            "data": {
+                "id": "image-generation",
+                "name": "Nano Banana Gen"
+            }
+        },
+        {
+            "id": "tech-lead",
+            "type": "agent",
+            "position": {
+                "x": 750,
+                "y": 200
+            },
+            "data": {
+                "id": "tech-lead",
+                "name": "Tech Lead",
+                "description": "Du bist der Tech Lead. Du bekommst ein JSON Asset. Berechne mit tool_math_calculate einen Basiswert (z.B. HP oder Size) durch eine zufällige Berechnung und speichere die Info als Textdatei in einem Ordner auf dem Computer mit tool_save_file. Antworte in JSON.",
+                "provider": "gemini",
+                "model": "gemini-1.5-flash"
+            }
+        },
+        {
+            "id": "mcp-file-server",
+            "type": "mcp",
+            "position": {
+                "x": 750,
+                "y": 350
+            },
+            "data": {
+                "id": "mcp-file",
+                "name": "File Server"
+            }
+        },
+        {
+            "id": "mcp-math-server",
+            "type": "mcp",
+            "position": {
+                "x": 950,
+                "y": 250
+            },
+            "data": {
+                "id": "mcp-math",
+                "name": "Math Server"
+            }
+        },
+        {
+            "id": "end",
+            "type": "node",
+            "position": {
+                "x": 1000,
+                "y": 100
+            },
+            "data": {
+                "id": "end",
+                "name": "Ende"
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "start",
+            "target": "game-designer"
+        },
+        {
+            "id": "e2",
+            "source": "game-designer",
+            "target": "browser-tool"
+        },
+        {
+            "id": "e3",
+            "source": "game-designer",
+            "target": "iterator"
+        },
+        {
+            "id": "e4",
+            "source": "iterator",
+            "target": "2d-artist",
+            "sourceHandle": "loop"
+        },
+        {
+            "id": "e5",
+            "source": "2d-artist",
+            "target": "nano-banana"
+        },
+        {
+            "id": "e6",
+            "source": "iterator",
+            "target": "tech-lead",
+            "sourceHandle": "loop"
+        },
+        {
+            "id": "e7",
+            "source": "tech-lead",
+            "target": "mcp-file-server"
+        },
+        {
+            "id": "e8",
+            "source": "tech-lead",
+            "target": "mcp-math-server"
+        },
+        {
+            "id": "e9",
+            "source": "iterator",
+            "target": "end",
+            "sourceHandle": "next"
+        }
+    ]
+}
