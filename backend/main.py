@@ -24,6 +24,7 @@ from file_server import tool_list_files, tool_save_file, tool_analyze_folder, to
 from data_server import tool_excel_csv_analyzer
 from email_server import tool_read_emails, tool_draft_email, tool_send_email
 from blender_server import tool_run_blender_script
+from whatsapp_server import tool_send_whatsapp_message
 
 from playwright.sync_api import sync_playwright
 
@@ -387,6 +388,9 @@ def run_ag2_pipeline_task(task_id: str, blueprint_data: dict):
                                 return tool_run_blender_script(script_content, output_path=save_loc)
                             agent.register_for_llm(name="tool_run_blender_script", description="Executes Blender Python script (bpy).")(custom_blender_tool)
                             user_proxy.register_for_execution(name="tool_run_blender_script")(custom_blender_tool)
+                        elif mcp_id == "mcp-whatsapp":
+                            agent.register_for_llm(name="tool_send_whatsapp_message", description="Sende eine WhatsApp Nachricht (via FastAgency).")(tool_send_whatsapp_message)
+                            user_proxy.register_for_execution(name="tool_send_whatsapp_message")(tool_send_whatsapp_message)
                         elif mcp_id == "mcp-server": # generic fallback
                             agent.register_for_llm(name="tool_math_calculate", description="Calculates math expressions")(tool_math_calculate)
                             user_proxy.register_for_execution(name="tool_math_calculate")(tool_math_calculate)

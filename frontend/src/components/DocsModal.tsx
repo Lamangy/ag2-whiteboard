@@ -202,6 +202,13 @@ export default function DocsModal({ onClose }: { onClose: () => void }) {
                   <p className="text-xs text-slate-500 italic">Agenten-Anweisung: "Schreibe ein Blender Skript, das einen leuchtenden, roten Würfel erstellt und ihn rendert. Führe das Skript über das Tool aus."</p>
                 </div>
 
+                {/* WhatsApp Server */}
+                <div className="border border-green-200 bg-green-50/50 p-5 rounded-xl">
+                  <h4 className="font-bold text-green-800 flex items-center gap-2 mb-2">MCP WhatsApp Server (FastAgency)</h4>
+                  <p className="text-sm text-slate-700 mb-2"><strong>tool_send_whatsapp_message(phone_number, message):</strong><br/>Nutzt die FastAgency Laufzeitumgebung, um Agenten um Kommunikationsfähigkeiten zu erweitern und WhatsApp Nachrichten zu senden.</p>
+                  <p className="text-xs text-slate-500 italic">Agenten-Anweisung: "Sende eine WhatsApp Nachricht mit dem Text 'Hallo Welt' an die Nummer '+4912345678'."</p>
+                </div>
+
               </div>
             </section>
 

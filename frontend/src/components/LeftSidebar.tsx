@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bot, Network, Server, FileText, Globe, Image as ImageIcon, Edit3, Layers, Users, Repeat } from 'lucide-react';
+import { Bot, Network, Server, FileText, Globe, Image as ImageIcon, Edit3, Layers, Users, Repeat, MessageCircle } from 'lucide-react';
 
 const categories = [
   {
@@ -36,6 +36,7 @@ const categories = [
       { id: 'mcp-data', type: 'mcp', name: 'Excel / CSV Analyzer', description: 'MCP: Analysiert Excel/CSV Dateien mit Pandas', icon: Server },
       { id: 'mcp-email', type: 'mcp', name: 'Email Integration', description: 'MCP: Liest E-Mails, erstellt Entwürfe und sendet E-Mails', icon: Server },
       { id: 'mcp-blender', type: 'mcp', name: 'Blender 3D Automation', description: 'MCP: Führt Blender-Scripts im Hintergrund aus', icon: Server },
+      { id: 'mcp-whatsapp', type: 'mcp', name: 'WhatsApp Server', description: 'MCP: Sendet WhatsApp Nachrichten (via FastAgency)', icon: MessageCircle },
     ]
   },
   {
